@@ -1,0 +1,125 @@
+.JassView {
+  flex: 1;
+  margin: 20px;
+
+  display: flex;
+  flex-direction: column;
+  .JassHeader {
+    flex-shrink: 0;
+    margin-bottom: -1px;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    .form-control {
+      display: flex;
+      flex-direction: row;
+      width: 280px;
+      padding: 6px 6px 6px 12px;
+      input {
+        border: 0;
+        padding: 0;
+        flex: 1;
+        width: 0;
+        &:focus {
+          outline: none;
+        }
+      }
+      .search-tag {
+        user-select: none;
+        flex-shrink: 0;
+        color: #ccc;
+        margin-left: 4px;
+      }
+      button {
+        flex-shrink: 0;
+        color: #888;
+        line-height: 18px;
+        display: inline-block;
+        height: 24px;
+        width: 24px;
+        border-radius: 4px;
+        margin: -2px 0 -2px 4px;
+        .glyphicon {
+          line-height: 18px;
+        }
+        border: 0;
+        background: none;
+        padding: 1px 6px;
+        position: relative;
+        &::before {
+          content: '';
+          position: absolute;
+          background-color: #e3e3e3;
+          width: 0;
+          height: 0;
+          left: 12px;
+          top: 12px;
+        }
+        &[disabled] {
+          color: #ccc;
+        }
+        &:not([disabled]) {
+          &:hover {
+            background-color: #eee;
+            color: #333;
+            transition-duration: 0.5s;
+          }
+          &:hover:active {
+            background-color: transparent;
+            &::before {
+              width: 32px;
+              height: 32px;
+              border-radius: 16px;
+              left: -4px;
+              top: -4px;
+              transition-duration: 0.25s;
+            }
+          }
+        }
+        &:focus {
+          outline: none;
+        }
+      }
+    }
+  }
+  .JassSource {
+    flex: 1;
+    .JassLines {
+      border: 1px solid #ddd;
+      border-bottom-left-radius: 0.5em;
+      border-bottom-right-radius: 0.5em;
+    }
+
+    .jkey { font-weight: bold; }
+    .jtyp { font-weight: bold; color: #05A; }
+    .jcon { color: #007; }
+    .jnum { color: #007; }
+    .jnat { color: #800080; }
+    .jbjf { color: #f00; }
+    .jchr { font-weight: bold; font-style: italic; text-decoration: underline; color: #000; }
+    .jstr { font-style: italic; color: #008; }
+    .jcom { font-style: italic; color: #080; }
+  }
+}
+
+#jass-options {
+  * {
+    font-weight: normal;
+  }
+  label {
+    display: block;
+  }
+  label.indent {
+    margin-left: 16px;
+  }
+  input {
+    border: 1px solid #aaa;
+    border-radius: 3px;
+    padding: 1px 3px;
+    margin: 0 4px;
+  }
+  input[type="checkbox"] {
+    margin: 0;
+    position: relative;
+    top: 1px;
+  }
+}

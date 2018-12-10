@@ -1,0 +1,8 @@
+.vs
+/Debug
+/emcc
+/Release
+/test
+/work
+/x64
+DataGen.VC.db

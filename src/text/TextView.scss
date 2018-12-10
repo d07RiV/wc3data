@@ -1,0 +1,40 @@
+.TextView {
+  > div {
+    overflow: visible !important;
+  }
+  &:focus {
+    outline: none;
+  }
+  .fake-line {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    font-size: 0;
+  }
+
+  .TextLine {
+    padding-left: 75px;
+    font-family: 'Courier', monospace;
+    font-size: 14px;
+    line-height: 16px;
+    white-space: pre;
+    .line {
+      position: absolute;
+      display: block;
+      width: 65px;
+      padding: 0 0.5em;
+      color: rgb(43, 145, 175);
+      text-align: right;
+      left: 0;
+      &::before {
+        content: attr(data-line-number)
+      }
+    }
+    .match {
+      background-color: #ff0;
+    }
+    .match-current {
+      background-color: rgb(255, 150, 50);
+    }
+  }
+}

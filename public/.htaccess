@@ -1,0 +1,15 @@
+Options +FollowSymLinks -MultiViews -Indexes
+
+RewriteEngine On
+RewriteBase /
+
+RewriteCond %{HTTPS} !on
+RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+RewriteRule ^api/ - [L]
+
+RewriteCond $1 -f
+RewriteRule ^(.*)$ - [L]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.html [L,QSA]

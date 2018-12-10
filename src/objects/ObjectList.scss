@@ -1,0 +1,142 @@
+$line-color: #888;
+$background-color: #fff;
+$group-indent: 16px;
+
+.ObjectList {
+  border-right: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  white-space: nowrap;
+  overflow-x: hidden;
+  overflow-y: auto;
+  .ObjectLines {
+    outline: none;
+    > div {
+      overflow: visible !important;
+    }
+  }
+  .search-box {
+    flex-shrink: 0;
+    background-color: #f8f8f8;
+    border-bottom: 1px solid #ddd;
+    padding: 8px;
+    display: flex;
+    flex-direction: row;
+    input {
+      flex-grow: 1;
+    }
+    button {
+      flex-shrink: 0;
+      margin-left: 6px;
+    }
+  }
+  .no-results {
+    font-style: italic;
+    color: #888;
+  }
+
+  .ObjectLink {
+    color: #222;
+    text-decoration: none;
+    .ObjectName {
+      display: inline-block;
+      padding: 0 2px;
+      line-height: 18px;
+    }
+    &.selected .ObjectName {
+      background: rgb(0, 120, 215);
+      color: #fff;
+      border: 1px dotted #000;
+      margin: -1px;
+      position: relative;
+      top: -1px;
+      padding-top: 1px;
+      line-height: 15px;
+    }
+  }
+
+
+  .ObjectListItems {
+    flex: 1 1;
+  }
+
+  .TreeRow {
+    padding: 0 4px;
+    line-height: 18px;
+    .indent {
+      position: relative;
+      padding-left: $group-indent;
+      &.line::before, &.halfLine::before, &.tLine::before {
+        content: '';
+        display: block;
+        position: absolute;
+        left: 9px;
+        top: 0;
+        width: 0;
+        border-left: 1px dotted $line-color;
+      }
+      &.line::before, &.tLine::before {
+        bottom: 1px;
+      }
+      &.halfLine::before {
+        bottom: 9px;
+      }
+      &.halfLine::after, &.tLine::after {
+        content: '';
+        display: block;
+        position: absolute;
+        left: 9px;
+        top: 8px;
+        width: 7px;
+        height: 0;
+        border-bottom: 1px dotted $line-color;
+      }
+    }
+  }
+  .ObjectGroup {
+    position: relative;
+    cursor: default;
+    user-select: none;
+    .Icon {
+      background-image: url(./assets/folder_closed.png);
+    }
+    &.expanded .Icon {
+      background-image: url(./assets/folder_open.png);
+    }
+    &.expanded::before {
+      content: '';
+      display: block;
+      position: absolute;
+      left: 9px;
+      top: 9px;
+      width: 0;
+      bottom: 1px;
+      border-left: 1px dotted $line-color;
+    }
+  }
+  .indent .ObjectGroup {
+    .toggle {
+      &::before { content: '+'; }
+      display: block;
+      cursor: pointer;
+      margin: 0;
+      text-indent: 0;
+      position: absolute;
+      left: -12px;
+      top: 3px;
+      box-sizing: border-box;
+      width: 11px;
+      height: 11px;
+      font-weight: normal;
+      line-height: 8px;
+      font-size: 16px;
+      font-family: monospace;
+      border: 1px solid $line-color;
+      background: $background-color;
+      z-index: 2;
+    }
+    &.expanded .toggle {
+      &::before { content: '-'; }
+    }
+  }
+}

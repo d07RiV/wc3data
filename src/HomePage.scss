@@ -1,0 +1,41 @@
+.HomePage {
+  flex: 1;
+  padding: 20px;
+  overflow: auto;
+  margin-bottom: 0;
+  ul {
+    margin-left: 2em;
+    list-style-type: disc;
+  }
+  ul.mapInfo {
+    margin: 0;
+    list-style: none;
+    background-color: rgba(0,0,0,0.8);
+    color: #fff;
+    padding: 8px;
+    font-family: 'QuadratSerial';
+    border-radius: 8px;
+    max-width: 460px;
+    margin-bottom: 8px;
+    b {
+      font-weight: normal;
+      color: #ffcc00;
+    }
+  }
+  .linkLike {
+    font-weight: normal;
+    color: #337ab7;
+    cursor: pointer;
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+  .unload {
+    color: #888;
+    margin-left: 0.5em;
+    cursor: pointer;
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}

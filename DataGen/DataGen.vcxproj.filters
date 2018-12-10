@@ -1,0 +1,556 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="utils">
+      <UniqueIdentifier>{99e37371-3be5-46a9-af43-524299bdf556}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ngdp">
+      <UniqueIdentifier>{77d794e1-43c6-435a-87e2-f1699d87d8f8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="datafile">
+      <UniqueIdentifier>{8e0a02dc-bcb7-433f-aed6-a3ac594df91d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="image">
+      <UniqueIdentifier>{0c293497-d76a-4931-80e8-8a09a5ff8556}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="rmpq">
+      <UniqueIdentifier>{d0da68c8-934c-493d-9057-3c3db69d92be}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="rmpq\pklib">
+      <UniqueIdentifier>{3d8e4777-165d-4ad3-9e02-d680a60d3ed2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="rmpq\adpcm">
+      <UniqueIdentifier>{24f52906-5c91-4ce4-8c1c-ac9dfb738751}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="rmpq\huffman">
+      <UniqueIdentifier>{28209bfd-9aca-44ba-a483-78a28d082ba5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="zlib">
+      <UniqueIdentifier>{9f6307d8-b135-431e-adc1-ee3a23b0d68b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="zlib\source">
+      <UniqueIdentifier>{4628f53f-6262-4487-bfad-47ab81fae1c7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="jpeg">
+      <UniqueIdentifier>{8f142525-75f6-4cec-9195-aa91fe91ffc2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="jpeg\source">
+      <UniqueIdentifier>{3ad02a33-d1b8-47d0-a46f-5e00ee7cd163}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="zlib\gzsource">
+      <UniqueIdentifier>{b48fde99-5553-4c45-9231-a19961870011}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\checksum.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\common.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\file.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\http.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\json.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\logger.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\path.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\utf8.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="datafile\slk.cpp">
+      <Filter>datafile</Filter>
+    </ClCompile>
+    <ClCompile Include="datafile\metadata.cpp">
+      <Filter>datafile</Filter>
+    </ClCompile>
+    <ClCompile Include="datafile\id.cpp">
+      <Filter>datafile</Filter>
+    </ClCompile>
+    <ClCompile Include="datafile\wtsdata.cpp">
+      <Filter>datafile</Filter>
+    </ClCompile>
+    <ClCompile Include="datafile\westrings.cpp">
+      <Filter>datafile</Filter>
+    </ClCompile>
+    <ClCompile Include="datafile\unitdata.cpp">
+      <Filter>datafile</Filter>
+    </ClCompile>
+    <ClCompile Include="datafile\objectdata.cpp">
+      <Filter>datafile</Filter>
+    </ClCompile>
+    <ClCompile Include="datafile\game.cpp">
+      <Filter>datafile</Filter>
+    </ClCompile>
+    <ClCompile Include="ngdp\ngdp.cpp">
+      <Filter>ngdp</Filter>
+    </ClCompile>
+    <ClCompile Include="ngdp\cdnloader.cpp">
+      <Filter>ngdp</Filter>
+    </ClCompile>
+    <ClCompile Include="image\image.cpp">
+      <Filter>image</Filter>
+    </ClCompile>
+    <ClCompile Include="image\imageblp2.cpp">
+      <Filter>image</Filter>
+    </ClCompile>
+    <ClCompile Include="image\imagedds.cpp">
+      <Filter>image</Filter>
+    </ClCompile>
+    <ClCompile Include="image\imagepng.cpp">
+      <Filter>image</Filter>
+    </ClCompile>
+    <ClCompile Include="image\imageblp.cpp">
+      <Filter>image</Filter>
+    </ClCompile>
+    <ClCompile Include="image\imagegif.cpp">
+      <Filter>image</Filter>
+    </ClCompile>
+    <ClCompile Include="image\imagetga.cpp">
+      <Filter>image</Filter>
+    </ClCompile>
+    <ClCompile Include="rmpq\locale.cpp">
+      <Filter>rmpq</Filter>
+    </ClCompile>
+    <ClCompile Include="rmpq\common.cpp">
+      <Filter>rmpq</Filter>
+    </ClCompile>
+    <ClCompile Include="rmpq\archive.cpp">
+      <Filter>rmpq</Filter>
+    </ClCompile>
+    <ClCompile Include="rmpq\compress.cpp">
+      <Filter>rmpq</Filter>
+    </ClCompile>
+    <ClCompile Include="rmpq\pklib\crc32.c">
+      <Filter>rmpq\pklib</Filter>
+    </ClCompile>
+    <ClCompile Include="rmpq\pklib\explode.c">
+      <Filter>rmpq\pklib</Filter>
+    </ClCompile>
+    <ClCompile Include="rmpq\pklib\implode.c">
+      <Filter>rmpq\pklib</Filter>
+    </ClCompile>
+    <ClCompile Include="rmpq\adpcm\adpcm.cpp">
+      <Filter>rmpq\adpcm</Filter>
+    </ClCompile>
+    <ClCompile Include="rmpq\huffman\huff.cpp">
+      <Filter>rmpq\huffman</Filter>
+    </ClCompile>
+    <ClCompile Include="icons.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="zlib\source\adler32.c">
+      <Filter>zlib\source</Filter>
+    </ClCompile>
+    <ClCompile Include="zlib\source\compress.c">
+      <Filter>zlib\source</Filter>
+    </ClCompile>
+    <ClCompile Include="zlib\source\crc32.c">
+      <Filter>zlib\source</Filter>
+    </ClCompile>
+    <ClCompile Include="zlib\source\deflate.c">
+      <Filter>zlib\source</Filter>
+    </ClCompile>
+    <ClCompile Include="zlib\source\infback.c">
+      <Filter>zlib\source</Filter>
+    </ClCompile>
+    <ClCompile Include="zlib\source\inffast.c">
+      <Filter>zlib\source</Filter>
+    </ClCompile>
+    <ClCompile Include="zlib\source\inflate.c">
+      <Filter>zlib\source</Filter>
+    </ClCompile>
+    <ClCompile Include="zlib\source\inftrees.c">
+      <Filter>zlib\source</Filter>
+    </ClCompile>
+    <ClCompile Include="zlib\source\trees.c">
+      <Filter>zlib\source</Filter>
+    </ClCompile>
+    <ClCompile Include="zlib\source\uncompr.c">
+      <Filter>zlib\source</Filter>
+    </ClCompile>
+    <ClCompile Include="zlib\source\zutil.c">
+      <Filter>zlib\source</Filter>
+    </ClCompile>
+    <ClCompile Include="parse.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="webmain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jcapimin.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jcapistd.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jccoefct.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jccolor.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jcdctmgr.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jchuff.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jcinit.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jcmainct.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jcmarker.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jcmaster.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jcomapi.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jcparam.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jcphuff.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jcprepct.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jcsample.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jctrans.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jdapimin.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jdapistd.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jdatadst.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jdatasrc.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jdcoefct.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jdcolor.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jddctmgr.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jdhuff.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jdinput.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jdmainct.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jdmarker.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jdmaster.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jdmerge.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jdphuff.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jdpostct.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jdsample.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jdtrans.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jerror.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jfdctflt.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jfdctfst.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jfdctint.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jidctflt.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jidctfst.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jidctint.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jidctred.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jmemmgr.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jmemnobs.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jquant1.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jquant2.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg\source\jutils.c">
+      <Filter>jpeg\source</Filter>
+    </ClCompile>
+    <ClCompile Include="zlib\gzsource\gzclose.c">
+      <Filter>zlib\gzsource</Filter>
+    </ClCompile>
+    <ClCompile Include="zlib\gzsource\gzlib.c">
+      <Filter>zlib\gzsource</Filter>
+    </ClCompile>
+    <ClCompile Include="zlib\gzsource\gzread.c">
+      <Filter>zlib\gzsource</Filter>
+    </ClCompile>
+    <ClCompile Include="zlib\gzsource\gzwrite.c">
+      <Filter>zlib\gzsource</Filter>
+    </ClCompile>
+    <ClCompile Include="webarc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="jass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\strlib.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="search.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hash.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="image\imagejpg.cpp">
+      <Filter>image</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="datafile\slk.h">
+      <Filter>datafile</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\checksum.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\common.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\file.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\http.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\json.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\logger.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\path.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\types.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\utf8.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="datafile\metadata.h">
+      <Filter>datafile</Filter>
+    </ClInclude>
+    <ClInclude Include="datafile\id.h">
+      <Filter>datafile</Filter>
+    </ClInclude>
+    <ClInclude Include="datafile\wtsdata.h">
+      <Filter>datafile</Filter>
+    </ClInclude>
+    <ClInclude Include="datafile\westrings.h">
+      <Filter>datafile</Filter>
+    </ClInclude>
+    <ClInclude Include="datafile\unitdata.h">
+      <Filter>datafile</Filter>
+    </ClInclude>
+    <ClInclude Include="datafile\objectdata.h">
+      <Filter>datafile</Filter>
+    </ClInclude>
+    <ClInclude Include="datafile\game.h">
+      <Filter>datafile</Filter>
+    </ClInclude>
+    <ClInclude Include="ngdp\cdnloader.h">
+      <Filter>ngdp</Filter>
+    </ClInclude>
+    <ClInclude Include="ngdp\ngdp.h">
+      <Filter>ngdp</Filter>
+    </ClInclude>
+    <ClInclude Include="image\image.h">
+      <Filter>image</Filter>
+    </ClInclude>
+    <ClInclude Include="image\format.h">
+      <Filter>image</Filter>
+    </ClInclude>
+    <ClInclude Include="rmpq\locale.h">
+      <Filter>rmpq</Filter>
+    </ClInclude>
+    <ClInclude Include="rmpq\common.h">
+      <Filter>rmpq</Filter>
+    </ClInclude>
+    <ClInclude Include="rmpq\archive.h">
+      <Filter>rmpq</Filter>
+    </ClInclude>
+    <ClInclude Include="rmpq\pklib\pklib.h">
+      <Filter>rmpq\pklib</Filter>
+    </ClInclude>
+    <ClInclude Include="rmpq\adpcm\adpcm.h">
+      <Filter>rmpq\adpcm</Filter>
+    </ClInclude>
+    <ClInclude Include="rmpq\huffman\huff.h">
+      <Filter>rmpq\huffman</Filter>
+    </ClInclude>
+    <ClInclude Include="icons.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zlib\zconf.h">
+      <Filter>zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="zlib\zlib.h">
+      <Filter>zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="zlib\zutil.h">
+      <Filter>zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg\jconfig.h">
+      <Filter>jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg\jerror.h">
+      <Filter>jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg\jmorecfg.h">
+      <Filter>jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg\jpeglib.h">
+      <Filter>jpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="zlib\source\crc32.h">
+      <Filter>zlib\source</Filter>
+    </ClInclude>
+    <ClInclude Include="zlib\source\deflate.h">
+      <Filter>zlib\source</Filter>
+    </ClInclude>
+    <ClInclude Include="zlib\source\inffast.h">
+      <Filter>zlib\source</Filter>
+    </ClInclude>
+    <ClInclude Include="zlib\source\inffixed.h">
+      <Filter>zlib\source</Filter>
+    </ClInclude>
+    <ClInclude Include="zlib\source\inflate.h">
+      <Filter>zlib\source</Filter>
+    </ClInclude>
+    <ClInclude Include="zlib\source\inftrees.h">
+      <Filter>zlib\source</Filter>
+    </ClInclude>
+    <ClInclude Include="zlib\source\trees.h">
+      <Filter>zlib\source</Filter>
+    </ClInclude>
+    <ClInclude Include="zlib\source\zconf.h">
+      <Filter>zlib\source</Filter>
+    </ClInclude>
+    <ClInclude Include="zlib\source\zlib.h">
+      <Filter>zlib\source</Filter>
+    </ClInclude>
+    <ClInclude Include="zlib\source\zutil.h">
+      <Filter>zlib\source</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg\source\jchuff.h">
+      <Filter>jpeg\source</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg\source\jconfig.h">
+      <Filter>jpeg\source</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg\source\jdct.h">
+      <Filter>jpeg\source</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg\source\jdhuff.h">
+      <Filter>jpeg\source</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg\source\jerror.h">
+      <Filter>jpeg\source</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg\source\jinclude.h">
+      <Filter>jpeg\source</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg\source\jmemsys.h">
+      <Filter>jpeg\source</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg\source\jmorecfg.h">
+      <Filter>jpeg\source</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg\source\jpegint.h">
+      <Filter>jpeg\source</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg\source\jpeglib.h">
+      <Filter>jpeg\source</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg\source\jversion.h">
+      <Filter>jpeg\source</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg\source\transupp.h">
+      <Filter>jpeg\source</Filter>
+    </ClInclude>
+    <ClInclude Include="zlib\gzsource\gzguts.h">
+      <Filter>zlib\gzsource</Filter>
+    </ClInclude>
+    <ClInclude Include="hash.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="jass.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\strlib.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="search.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="parse.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

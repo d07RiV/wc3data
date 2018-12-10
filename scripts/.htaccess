@@ -1,0 +1,38 @@
+RewriteEngine On
+RewriteBase /
+
+RewriteCond %{HTTPS} !on
+RewriteCond %{REQUEST_URI} !^/[0-9]+\..+\.cpaneldcv$
+RewriteCond %{REQUEST_URI} !^/[A-F0-9]{32}\.txt(?:\ Comodo\ DCV)?$
+RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/[0-9a-zA-Z_-]+$
+RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+RewriteCond %{HTTP_HOST} ^.+ptr\.d3planner\.com$
+RewriteRule ^.*$ http://ptr.d3planner.com/$0 [L,R=301]
+
+#RewriteCond %{HTTP_HOST} ^ptr\.d3planner\.com$
+#RewriteRule ^.*$ http://www.d3planner.com/$0 [L,R=302]
+
+RewriteCond %{HTTP_HOST} ^d3planner\.com$
+RewriteRule ^.*$ http://www.d3planner.com/$0 [L,R=301]
+
+RewriteRule ^kadala$ game/kadala [L,R=301]
+RewriteRule ^diff(.*)$ game/diff$1 [L,R=301]
+RewriteRule ^powers(.*)$ game/powers$1 [L,R=301]
+RewriteRule ^skills(.*)$ game/skills$1 [L,R=301]
+
+#RewriteRule ^scripts/(main|data|ui-simulator).js$ scripts/$1.php [L]
+RewriteRule ^(external|css|external/bnet/css)/all.css$ php/style.php [L]
+RewriteRule ^(css|external|php|scripts|mantisbt|chinese|game|translate|api)/ - [L]
+RewriteRule ^webgl/.*$ chinese/$0 [L]
+RewriteRule ^e?[0-9]*$ index.php [L]
+RewriteRule ^reset=[0-9a-f]{32}$ index.php [L]
+RewriteRule ^sim(/[a-z]+)?$ php/sim.php [L]
+RewriteRule ^locale(/[a-z][a-z][A-Z][A-Z])?$ php/locale.php [L]
+RewriteRule ^(core|proxy|save|load|search|data|report|savestash|loadstash|delete|changes|errors|account|priority|script|activity)$ php/$1.php [L]
+
+RewriteCond %{REQUEST_URI} !^/[0-9]+\..+\.cpaneldcv$
+RewriteCond %{REQUEST_URI} !^/[A-F0-9]{32}\.txt(?:\ Comodo\ DCV)?$
+RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/[0-9a-zA-Z_-]+$
+RewriteRule !^(index.php|index2.php|skills.php|.*\.(png|xml|ico|json|html)|raw.php)$ /php/error.php [B,L]
+ErrorDocument 404 /error.php

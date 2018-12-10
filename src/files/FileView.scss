@@ -1,0 +1,149 @@
+.FileView {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+
+  .message {
+    display: block;
+    font-style: italic;
+    color: 888;
+    margin: 8px;
+  }
+
+  .Icon {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background-repeat: no-repeat;
+    margin: -2px 2px -2px 0;
+    z-index: 1;
+    position: relative;
+    &.file-icon {
+      background-image: url(./assets/file_any.png);
+      &.file-blp, &.file-png, &.file-gif, &.file-tga, &.file-jpg {
+        background-image: url(./assets/file_image.png);
+      }
+      &.file-mdx, &.file-mdl {
+        background-image: url(./assets/file_model.png);
+      }
+    }
+  }
+}
+
+.FileData {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  display: flex;
+  flex-direction: column;
+  .tab-line {
+    flex-shrink: 0;
+    background-color: #eee;
+    border-bottom: 1px solid #ddd;
+    font-size: 16px;
+    padding: 4px 8px 0 8px;
+    margin: 0;
+    .tab-button {
+      vertical-align: top;
+      cursor: pointer;
+      background-color: #f8f8f8;
+      display: inline-block;
+      padding: 2px 12px;
+      margin: 0 4px;
+      border: 1px solid #ddd;
+      margin-bottom: -1px;
+      border-top-left-radius: 6px;
+      border-top-right-radius: 6px;
+      &.active {
+        background-color: #fff;
+        border-bottom-color: #fff;
+      }
+    }
+    .tab-xbutton {
+      vertical-align: top;
+      cursor: pointer;
+      background-color: #e8ffe8;
+      display: inline-block;
+      padding: 1px 12px 0px 12px;
+      margin: 0 4px;
+      border: 1px solid #ded;
+      margin-bottom: 2px;
+      border-radius: 6px;
+      .glyphicon {
+        font-size: 80%;
+      }
+    }
+  }
+  .tab-pane {
+    flex: 1;
+    padding: 0;
+    overflow: hidden;
+    position: relative;
+    &.image {
+      overflow: auto;
+      padding: 12px;
+
+      img {
+        $background-color: rgba(255, 255, 255, 1);
+        $a: 0.3;
+        $b: 0.0;
+        $c: $a;
+        $d: $b;
+        $e: 0.5;
+        background-color: $background-color;
+        background-size: 16px 16px;
+        background-image: // draw 
+                          linear-gradient(to right, rgba(0, 0, 0, $a) 50%, transparent 50%, transparent),
+                          linear-gradient(to right, transparent 0%, transparent 50%, rgba(0, 0, 0, $b) 50%),
+                          linear-gradient(to bottom, rgba(0, 0, 0, $c) 50%, transparent 50%, transparent),
+                          linear-gradient(to bottom, transparent 0%, transparent 50%, rgba(0, 0, 0,$d) 50%),
+      
+                          // draw squares to selectively shift opacity
+                          linear-gradient(to bottom, $background-color 50%, transparent 50%, transparent),
+                          linear-gradient(to right, transparent 0%, transparent 50%, rgba(0, 0, 0, $e) 50%),
+                          
+                          // b-i: l-g toggle trick
+                          none;              
+      }
+    }
+  }
+
+  .HexLines {
+    > div {
+      overflow: visible !important;
+    }
+    &:focus {
+      outline: none;
+    }
+    font-family: 'Consolas', 'Courier', monospace;
+    font-size: 16px;
+    white-space: pre;
+    .offset {
+      color: #888;
+      margin-left: 12px;
+      margin-right: 8px;
+      user-select: none;
+    }
+    .hex {
+      .padding {
+        user-select: none;
+      }
+      span {
+        margin: 0 3px;
+      }
+      span:nth-child(4) {
+        margin-right: 6px;
+      }
+      span:nth-child(8) {
+        margin-right: 10px;
+      }
+      span:nth-child(12) {
+        margin-right: 6px;
+      }
+    }
+    .ascii {
+      color: #444;
+      margin-left: 12px;
+      user-select: none;
+    }
+  }
+}

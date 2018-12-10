@@ -1,0 +1,92 @@
+.SearchBox {
+  position: fixed;
+  top: 20px;
+  right: 30px;
+  border: 1px solid #888;
+  border-radius: 4px;
+  box-sizing: border-box;
+  width: 300px;
+  height: 40px;
+  background: #fff;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+  z-index: 10;
+  padding: 8px 6px 8px 12px;
+  display: flex;
+  font-size: 12px;
+  line-height: 22px;
+  font-family: sans-serif;
+  input {
+    flex: 1;
+    border: 0;
+    padding: 0;
+    min-width: 0;
+    outline: none;
+  }
+  input ~ * {
+    flex-shrink: 0;
+  }
+  .count {
+    margin: 0 4px;
+    color: #aaa;
+  }
+  .separator {
+    border-left: 1px solid #aaa;
+    margin: 0 8px;
+  }
+  &.search-hidden {
+    top: -100px;
+    transition: top 0.25s;
+  }
+  transition: top 0.25s;
+  button {
+    flex-shrink: 0;
+    color: #888;
+    line-height: 18px;
+    display: inline-block;
+    font-size: 12px;
+    height: 24px;
+    width: 24px;
+    border-radius: 4px;
+    margin: -1px 2px -1px 2px;
+    .glyphicon {
+      line-height: 18px;
+    }
+    border: 0;
+    background: none;
+    padding: 1px 6px;
+    position: relative;
+    &::before {
+      content: '';
+      position: absolute;
+      background-color: #e3e3e3;
+      width: 0;
+      height: 0;
+      left: 12px;
+      top: 12px;
+    }
+    &[disabled] {
+      color: #ccc;
+    }
+    &:not([disabled]) {
+      &:hover {
+        background-color: #eee;
+        color: #333;
+        transition-duration: 0.5s;
+      }
+      &:hover:active {
+        background-color: transparent;
+        &::before {
+          width: 32px;
+          height: 32px;
+          border-radius: 16px;
+          left: -4px;
+          top: -4px;
+          transition-duration: 0.25s;
+        }
+      }
+    }
+    &:focus {
+      outline: none;
+    }
+  }
+}
