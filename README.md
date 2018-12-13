@@ -1,4 +1,4 @@
-Source code for wc3.rivsoft.net
+Source code for [WC3 Data](https://wc3.rivsoft.net)
 
 DataGen project is used to generate static data and build WASM scripts for map parsing in browser.
 
