@@ -106,8 +106,6 @@ MemoryFile write_meta(std::set<std::string> const& names, CompositeLoader& loade
 
 int main() {
   CompositeLoader loader;
-  Image img(path::root() / "image.jpg");
-  img.write(path::root() / "image.png");
 
 #if !TEST_MAP
 #if USE_CDN
