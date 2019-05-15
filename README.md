@@ -8,10 +8,10 @@ USE_CDN=1 and GENERATE_META=1 to generate data for the latest version. Then set 
 /public/api folder (for development) should have the following files:
 
 * versions.json - slightly different format than what DataGen creates, correct format is like http://wc3.rivsoft.net/api/versions.json
-* <version>.json - JSON data for every listed game version
-* icons<number>.png - collections of small (16x16) icons
+* \<version\>.json - JSON data for every listed game version
+* icons\<number\>.png - collections of small (16x16) icons
 * images.dat - hashes of all icons in the collections
-* images/<id>.png - original size images (can be served from images.gzx archive instead)
+* images/\<id\>.png - original size images (can be served from images.gzx archive instead)
 * meta.gzx - data used for map parsing
   
 In src/maps the jscc/wasm files are built by DataGen project using configure.js/build.bat scripts (requires [emscripten](https://kripken.github.io/emscripten-site/docs/getting_started/downloads.html)). jscc extension is used because we need a different loader for these.
