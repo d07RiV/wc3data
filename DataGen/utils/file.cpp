@@ -507,7 +507,7 @@ void Archive::add(uint64 id, File file, bool compression) {
 }
 
 void Archive::write(File file) {
-  uint32 offset = files_.size() * 16 + 4;
+  uint32 offset = files_.size() * sizeof(ArchiveEntry) + 8;
   file.write32(ARCHIVE_SIGNATURE);
   file.write32((uint32) files_.size());
   for (auto& kv : files_) {
