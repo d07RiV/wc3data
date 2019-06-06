@@ -4,6 +4,7 @@ import classNames from 'classnames';
 import { RawNames, RawNamesSwitch, SortNames, BuildCtx, TypeCtx, IdCtx, ObjectFilters, ObjectIcon } from './ObjectCtx';
 import { FormControl, Button, Glyphicon } from 'react-bootstrap';
 import { AutoSizer, List } from 'react-virtualized';
+import DataDownload from './DataDownload';
 
 import Panel from 'react-flex-panel';
 
@@ -209,6 +210,8 @@ class ObjectGroup {
 export class ObjectList extends React.PureComponent {
   state = {search: "", searchResults: null};
 
+  static contextType = RawNames;
+
   onSearchKeyDown = (e) => {
     if (e.which === 27) {
       this.setState({search: "", searchResults: null});
@@ -222,6 +225,7 @@ export class ObjectList extends React.PureComponent {
       const re = new RegExp("\\b" + search.replace(/[|\\{}()[\]^$+*?.]/g, "\\$&"), "i");
       found = data.objects.filter(obj => {
         if (obj.type !== type) return false;
+        if (this.context && obj.id.match(re)) return true;
         if (obj.name.match(re)) return true;
         if (obj.data.propernames && obj.data.propernames.match(re)) return true;
         return false;
@@ -252,9 +256,16 @@ export class ObjectList extends React.PureComponent {
     );
   }
 
+  onDownload = () => {
+    this.setState({showDownload: this.props.type});
+  }
+  onCloseDownload = () => {
+    this.setState({showDownload: false});
+  }
+
   render() {
     const {data, type, id, className, ...props} = this.props;
-    const {search, searchResults} = this.state;
+    const {search, searchResults, showDownload} = this.state;
     if (!this.group || this.group._data !== data || this.group._type !== type) {
       const filters = ObjectFilters[type];
       if (!filters) {
@@ -286,8 +297,10 @@ export class ObjectList extends React.PureComponent {
     }
     return (
       <Panel className={classNames(className, "ObjectList")} {...props}>
+        <DataDownload data={data} show={showDownload} onHide={this.onCloseDownload}/>
         <div className="search-box">
           <FormControl type="text" value={search} placeholder="Search" onKeyDown={this.onSearchKeyDown} onChange={this.onSearch}/>
+          <Button active={!!showDownload} onClick={this.onDownload} bsSize="small"><Glyphicon glyph="download-alt"/></Button>
           <RawNames.Consumer>
             {rawNames => (
               <RawNamesSwitch.Consumer>

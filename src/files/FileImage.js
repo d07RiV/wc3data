@@ -51,13 +51,13 @@ const imageInfo = data => {
 
 export default class FileImageView extends React.PureComponent {
   render() {
-    const { data, image } = this.props;
-    const info = imageInfo(data);
+    const { data, image, name } = this.props;
+    const info = data && imageInfo(data);
     return (
       <div>
-        <div>{info.width}x{info.height} ({info.format})</div>
+        {info != null && <div>{info.width}x{info.height} ({info.format})</div>}
         <div>
-          <img src={image} alt="Extracted"/>
+          <img src={image} alt={name || "Extracted"}/>
         </div>
       </div>
     );

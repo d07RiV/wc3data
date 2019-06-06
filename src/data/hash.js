@@ -1,6 +1,6 @@
 let cryptTable = null;
 
-export default function pathHash(name, hashType = 1) {
+export function pathHashTyped(name, hashType = 1) {
   if (!cryptTable) {
     cryptTable = new Uint32Array(1280);
     let seed = 0x00100001;
@@ -28,4 +28,31 @@ export default function pathHash(name, hashType = 1) {
     seed2 = (ch + seed1 + seed2 * 33 + 3) | 0;
   }
   return seed1;
+}
+
+export default function pathHash(name) {
+  const u32 = new Uint32Array(2);
+  u32[0] = pathHashTyped(name, 1);
+  u32[1] = pathHashTyped(name, 2);
+  return u32;
+}
+
+export function makeUid(id) {
+  return id[1].toString(16).padStart(8, '0') + id[0].toString(16).padStart(8, '0');
+}
+
+export function parseUid(id) {
+  const u32 = new Uint32Array(2);
+  u32[0] = parseInt(id.substr(8, 8), 16);
+  u32[1] = parseInt(id.substr(0, 8), 16);
+  if (isNaN(u32[0]) || isNaN(u32[1])) {
+    return null;
+  }
+  return u32;
+}
+
+export function equalUid(a, b) {
+  if (!a !== !b) return false;
+  if (!a) return true;
+  return a[0] === b[0] && a[1] === b[1];
 }

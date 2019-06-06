@@ -24,7 +24,7 @@ public:
     return Archive::has(pathHash(name));
   }
 
-  File& create(uint64 id, bool compression = false);
+  using Archive::create;
   File& create(char const* name, bool compression = false);
 
   using Archive::open;
@@ -36,6 +36,6 @@ public:
     return open(path);
   }
 
-  void add(uint64 id, File file, bool compression = false);
+  using Archive::add;
   void add(char const* name, File file, bool compression = false);
 };

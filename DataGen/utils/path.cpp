@@ -63,9 +63,9 @@ string path::root() {
 #endif
     rp = path(buffer);
 #ifdef _DEBUG
-    rp = "G:\\Progs\\wc3\\DataGen\\work";
+    rp = "G:\\rivsoft\\wc3\\DataGen\\work";
 #endif
-    rp = "G:\\Progs\\wc3\\DataGen\\work";
+    rp = "G:\\rivsoft\\wc3\\DataGen\\work";
     SetCurrentDirectory(rp.c_str());
   }
   return rp;

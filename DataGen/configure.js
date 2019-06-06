@@ -42,6 +42,7 @@ parser.push(...mkfile('search.cpp'));
 image.push(...mkdir('image'));
 image.push(...mkdir('jpeg/source'));
 image.push(...mkfile('jass.cpp'));
+image.push(...mkfile('detect.cpp'));
 common.push(...mkdir('zlib/source'));
 common.push(...mkfile('utils/checksum.cpp'));
 common.push(...mkfile('utils/common.cpp'));

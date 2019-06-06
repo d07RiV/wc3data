@@ -2,6 +2,11 @@ import React from 'react';
 import { AutoSizer, List } from 'react-virtualized';
 
 export default class FileHexView extends React.PureComponent {
+  state = {
+    foo: parseInt("foo", 10),
+    bar: undefined,
+  }
+
   onSearch = (text, dir) => {
     if (this._list) {
       return this._list.search(text, dir);

@@ -3,16 +3,12 @@ import { Link } from 'react-router-dom';
 import classNames from 'classnames';
 import { FormControl } from 'react-bootstrap';
 import { AutoSizer, List } from 'react-virtualized';
-import pathHash from 'data/hash';
+import pathHash, { makeUid, parseUid, equalUid } from 'data/hash';
 import { IdCtx } from './FileCtx';
 import AppCache from 'data/cache';
+import { withAsync } from 'utils';
 
 import Panel from 'react-flex-panel';
-
-const toHex = num => {
-  if (num < 0) num += 4294967296;
-  return num.toString(16).padStart(8, '0');
-}
 
 const processFiles = listfile => {
   const root = {
@@ -35,12 +31,12 @@ const processFiles = listfile => {
       }
       cd = cd.dirs[pl];
     }
-    const unk = path.match(/^Unknown\\([0-9A-F]{8})/);
+    const unk = path.match(/^Unknown\\([0-9A-F]{16})/);
     const ext = path.match(/\.(\w{1,3})$/);
     cd.files.push({
       name: p[p.length - 1],
       path,
-      key: unk ? (parseInt(unk[1], 16)|0) : pathHash(path),
+      key: unk ? parseUid(unk[1]) : pathHash(path),
       ext: ext ? ext[1].toLowerCase() : "unknown",
     });
   });
@@ -61,7 +57,7 @@ const FileLink = ({file}) => (
     {data => (
       <IdCtx.Consumer>
         {id => (
-          <Link to={`/${data.id}/files/${toHex(file.key)}`} className={classNames("ObjectLink", {selected: id === file.key})}>
+          <Link to={`/${data.id}/files/${makeUid(file.key)}`} className={classNames("ObjectLink", {selected: equalUid(id, file.key)})}>
             <span className={"Icon file-icon file-" + file.ext}/>
             <span className="ObjectName">{file.name}</span>
           </Link>
@@ -225,8 +221,17 @@ class FileDirectory {
   }
 }
 
-export class FileList extends React.PureComponent {
+class FileListInner extends React.PureComponent {
   state = {search: "", searchResults: null};
+
+  constructor(props) {
+    super(props);
+
+    const res = processFiles(props.listFile);
+    this.files = res.files;
+    this.root = new FileDirectory(res.root);
+    this.root.onResize = this.onResize;
+  }
 
   onSearchKeyDown = (e) => {
     if (e.which === 27) {
@@ -266,33 +271,15 @@ export class FileList extends React.PureComponent {
   }
 
   render() {
-    const {data, id, className, ...props} = this.props;
+    const {listFile, id, className, ...props} = this.props;
     const {search, searchResults} = this.state;
 
-    if (data !== this.data_) {
-      delete this.files_;
-      delete this.dirs_;
-      this.data_ = data;
-
-      const list = data.file("listfile.txt");
-      if (list) {
-        const res = processFiles(list);
-        this.files = res.files;
-        this.root = new FileDirectory(res.root);
-        this.root.onResize = this.onResize;
-        setTimeout(() => {
-          if (this._list) {
-            this._list.forceUpdateGrid();
-          }
-        });
-      }
-    }
     if (!this.root) {
       return null;
     }
 
-    if (!searchResults && this.root._id !== id) {
-      const file = this.files && this.files.find(obj => obj.key === id);
+    if (!searchResults && !equalUid(this.root._id, id)) {
+      const file = this.files && this.files.find(obj => equalUid(obj.key, id));
       if (file) {
         this.root.onResize = null;
         const index = this.root.expandFile(file);
@@ -337,3 +324,9 @@ export class FileList extends React.PureComponent {
     );
   }
 }
+
+const EmptyPanel = ({id, listFile, className, ...props}) => <Panel className={classNames(className, "ObjectList")} {...props}/>;
+
+export const FileList = withAsync({
+  listFile: ({data}) => data.listFile(),
+}, ({data, ...props}) => <FileListInner key={data.id} {...props}/>, EmptyPanel, EmptyPanel);

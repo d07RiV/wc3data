@@ -5,8 +5,11 @@ import { IdCtx } from './FileCtx';
 import Panel from 'react-flex-panel';
 import AppCache from 'data/cache';
 
+import { parseUid } from 'data/hash';
+
 import { FileList } from './FileList';
 import { FileData } from './FileData';
+import { GameFileData } from './GameFileData';
 
 import './FileView.scss';
 
@@ -15,12 +18,8 @@ class FileViewComponent extends React.Component {
 
   render() {
     const data = this.context;
-    let key = parseInt(this.props.match.params.id, 16);
-    if (isNaN(key)) {
-      key = null;
-    } else {
-      key = key | 0;
-    }
+    const uid = this.props.match.params.id;
+    const key = uid == null ? null : parseUid(uid);
     return (
       <IdCtx.Provider value={key}>
         <div className="FileView">
@@ -30,10 +29,12 @@ class FileViewComponent extends React.Component {
               {key == null ? (
                 <span className="message">Select a file to view its contents</span>
               ) : (data.hasFile(key) ? (
-                <FileData data={data} id={key} key={key}/>
-              ) : (
+                <FileData data={data} id={key} key={uid}/>
+              ) : (data.archive ? (
                 <span className="message">File not found</span>
-              ))}
+              ) : (
+                <GameFileData data={data} id={key} key={uid}/>
+              )))}
             </Panel>
           </Panel>
         </div>

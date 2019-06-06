@@ -11,9 +11,12 @@ export default class MapHome extends React.Component {
     if (info) {
       info = JSON.parse(info);
     }
-    let image = data.image("war3mapPreview.tga");
-    if (!image) {
-      image = data.image("war3mapMap.blp");
+    let image = null;
+    if (data.archive) {
+      image = data.archive.loadImage("war3mapPreview.tga");
+      if (!image) {
+        image = data.archive.loadImage("war3mapMap.blp");
+      }
     }
     return (
       <div className="HomePage">

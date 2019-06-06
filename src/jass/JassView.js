@@ -5,7 +5,7 @@ import { Navbar, Nav, NavItem, FormGroup, Glyphicon, Popover } from 'react-boots
 import { AutoSizer } from 'react-virtualized';
 import AppCache from 'data/cache';
 import Options from 'data/options';
-import { withAsync, OverlayNav, ScrollSaver } from 'utils';
+import { withAsync, OverlayNav, ScrollSaver, downloadBlob } from 'utils';
 import parseKeywords from './keywords';
 
 import TextView from 'text/TextView';
@@ -148,18 +148,7 @@ class JassViewer extends React.Component {
     const text = this.props.lines.join("\n").replace("\n", "\r\n");
     const encoded = new TextEncoder().encode(text);
     const blob = new Blob([encoded], {type: "text/plain"});
-    const url = URL.createObjectURL(blob);
-
-    const el = document.createElement("a");
-    el.setAttribute("href", url);
-    el.setAttribute("download", "war3map.j");
-    el.style.display = "none";
-    document.body.appendChild(el);
-    el.click();
-    setTimeout(() => {
-      document.body.removeChild(el);
-      URL.revokeObjectURL(url);
-    });
+    downloadBlob(blob, "war3map.j");
   }
 
   setScroll = scrollTop => {

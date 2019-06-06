@@ -14,3 +14,4 @@ export * from './cache';
 export * from './scrollView';
 export * from './OverlayNav';
 export * from './ScrollSaver';
+export * from './downloadBlob';

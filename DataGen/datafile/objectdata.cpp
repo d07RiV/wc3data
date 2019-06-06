@@ -117,11 +117,10 @@ bool ObjectData::readOBJ(File file, MetaData* meta, bool ext, WTSData* wts) {
         unit = addUnit_(newid, oldid);
       } else {
         auto it = rows_.find(oldid);
-        if (it == rows_.end()) {
-          return false;
+        if (it != rows_.end()) {
+          units_[it->second] = std::make_shared<UnitData>(this, oldid, units_[it->second]);
+          unit = units_[it->second].get();
         }
-        units_[it->second] = std::make_shared<UnitData>(this, oldid, units_[it->second]);
-        unit = units_[it->second].get();
       }
       for (uint32 j = 0; j < count && end - file.tell() >= 8; j++) {
         uint32 modid = file.read32(true);
@@ -163,7 +162,9 @@ bool ObjectData::readOBJ(File file, MetaData* meta, bool ext, WTSData* wts) {
         } else {
           value = fmtstring("%.2f", file.read<float>());
         }
-        setUnitData(unit, mod, translate_(value.c_str()), index);
+        if (unit) {
+          setUnitData(unit, mod, translate_(value.c_str()), index);
+        }
         uint32 suf = file.read32(true);
         if (suf != 0 && suf != newid && suf != oldid) {
           return false;

@@ -52,12 +52,15 @@ struct ci_char_traits : public std::char_traits < char > {
     }
     return 0;
   }
-  static char const* find(char const* s, int n, char a) {
+  static char const* find(char const* s, size_t n, char a) {
     a = std::toupper(a);
-    while (n-- && std::toupper(*s) != a) {
+    while (n--) {
+      if (std::toupper(*s) == a) {
+        return s;
+      }
       ++s;
     }
-    return (n >= 0 ? s : nullptr);
+    return nullptr;
   }
 };
 class istring : public std::basic_string<char, ci_char_traits> {

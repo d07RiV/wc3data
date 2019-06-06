@@ -1,6 +1,6 @@
 import LoaderBinary from './ArchiveLoader.wasm';
 import LoaderModule from './ArchiveLoader.jscc';
-import pathHash from 'data/hash';
+import pathHash, { makeUid } from 'data/hash';
 
 class ArchiveLoader {
   images_ = {}
@@ -12,8 +12,8 @@ class ArchiveLoader {
   fileId(name) {
     if (typeof name === "string") {
       return pathHash(name);
-    } else if (typeof name === "number") {
-      return name | 0;
+    } else if (name != null && typeof name[0] === "number") {
+      return name;
     } else {
       return null;
     }
@@ -22,7 +22,7 @@ class ArchiveLoader {
   hasFile(name) {
     const id = this.fileId(name);
     if (id == null) return false;
-    return this.wasm._hasFile(id) !== 0;
+    return this.wasm._hasFile(id[0], id[1]) !== 0;
   }
 
   loadBinary(name) {
@@ -30,12 +30,12 @@ class ArchiveLoader {
     if (id == null) return null;
     let result = null;
     window.postResult = buf => result = buf;
-    const res = this.wasm._loadFile(id, 1);
+    const res = this.wasm._loadFile(id[0], id[1], 1);
     delete window.postResult;
     if (!result) {
       return null;
     }
-    return {data: result, text: res};
+    return {data: result, flags: res};
   }
 
   loadFile(name) {
@@ -43,7 +43,7 @@ class ArchiveLoader {
     if (id == null) return null;
     let result = null;
     window.postResult = buf => result = buf;
-    this.wasm._loadFile(id);
+    this.wasm._loadFile(id[0], id[1]);
     delete window.postResult;
     if (!result) {
       return null;
@@ -54,19 +54,20 @@ class ArchiveLoader {
   loadImage(name) {
     const id = this.fileId(name);
     if (id == null) return null;
+    const key = makeUid(id);
 
-    if (this.images_[id]) return this.images_[id];
+    if (this.images_[key]) return this.images_[key];
 
     let result = null;
     window.postResult = buf => result = buf;
-    this.wasm._loadImage(id);
+    this.wasm._loadImage(id[0], id[1]);
     delete window.postResult;
     if (!result) {
       return null;
     }
 
     const blob = new Blob([result], {type: "image/png"});
-    return this.images_[id] = URL.createObjectURL(blob);
+    return this.images_[key] = URL.createObjectURL(blob);
   }
 
   loadJASS(options) {
@@ -97,7 +98,7 @@ class ArchiveLoader {
     const dec = new TextDecoder();
     let prev = 0;
     for (let i = 0; i < result.length; ++i) {
-      if (result[i] == 0) {
+      if (result[i] === 0) {
         lines.push(dec.decode(result.subarray(prev, i)));
         prev = i + 1;
       }
@@ -107,6 +108,10 @@ class ArchiveLoader {
 }
 
 export default function loadArchive(data) {
+  const u32 = new Uint32Array(data.buffer || data, 0, 1);
+  if (u32[0] !== 0x31585A47) {
+    return Promise.reject("Outdated archive format. Try parsing the map again.");
+  }
   return LoaderModule({
     locateFile(name) {
       if (name === "ArchiveLoader.wasm") {

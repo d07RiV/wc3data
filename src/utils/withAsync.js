@@ -12,17 +12,27 @@ function withAsync(requests, Component, Loading, Error) {
       this.state = state;
     }
 
+    setStateChecked(...args) {
+      if (!this.unmounted) {
+        this.setState(...args);
+      }
+    }
+
     updateRequests(props, context) {
       requestNames.forEach(name => {
         const request = (typeof requests[name] === "function" ? requests[name](props, context) : requests[name]);
         if (this.state[name].request !== request) {
-          this.setState({[name]: {request}}, () => {
-            request.then(result => this.setState(prevState => {
-              if (prevState[name].request === request) return {[name]: {request, result}};
-            }), error => this.setState(prevState => {
-              if (prevState[name].request === request) return {[name]: {request, error}};
-            }));
-          });
+          if (request.then) {
+            this.setState({[name]: {request}}, () => {
+              request.then(result => this.setStateChecked(prevState => {
+                if (prevState[name].request === request) return {[name]: {request, result}};
+              }), error => this.setStateChecked(prevState => {
+                if (prevState[name].request === request) return {[name]: {request, error}};
+              }));
+            });
+          } else {
+            this.setState({[name]: {request, result: request}});
+          }
         }
       });
     }
@@ -32,6 +42,10 @@ function withAsync(requests, Component, Loading, Error) {
     }
     componentDidUpdate() {
       this.updateRequests(this.props, this.context);
+    }
+
+    componentWillUnmount() {
+      this.unmounted = true;
     }
 
     shouldComponentUpdate(nextProps, nextState) {

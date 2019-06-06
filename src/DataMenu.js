@@ -27,11 +27,9 @@ const DataMenu = () => (
         <LinkContainer to={`/${data.id}`} exact>
           <NavItem eventKey="build">{data.name}</NavItem>
         </LinkContainer>
-        {data.hasFile("listfile.txt") && (
-          <LinkContainer to={`/${data.id}/files`}>
-            <NavItem eventKey="files">Files</NavItem>
-          </LinkContainer>
-        )}
+        <LinkContainer to={`/${data.id}/files`}>
+          <NavItem eventKey="files">Files</NavItem>
+        </LinkContainer>
         <ObjectMenu/>
         {(data.hasFile("war3map.j") || data.hasFile("Scripts\\war3map.j")) && (
           <LinkContainer to={`/${data.id}/script`}>

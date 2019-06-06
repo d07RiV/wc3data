@@ -36,7 +36,7 @@ private:
   std::unique_ptr<NGDP::Encoding> encoding_;
 
   static void fixPath_(std::string& path);
-  std::unordered_map<std::string, NGDP::Hash_container> root_;
+  Map<NGDP::Hash_container> root_;
 
   std::map<std::string, std::string> buildConfig_;
 

@@ -36,7 +36,7 @@ void CdnLoader::fixPath_(std::string& path) {
     if (chr == '/') {
       chr = '\\';
     } else {
-      chr = ::tolower(chr);
+      //chr = ::tolower(chr);
     }
   }
 }

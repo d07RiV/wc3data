@@ -54,7 +54,6 @@ export default function parseKeywords(meta) {
 
   const blizzard = (meta.loadFile("Scripts\\Blizzard.j") || "").split(/[\r\n]/);
   let inFunc = false, inGlob = false;
-  //debugger;
   blizzard.forEach(line => {
     let m;
     if (inFunc) {

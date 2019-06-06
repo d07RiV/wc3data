@@ -1,10 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { RawNames, BuildCtx, ObjectIcon } from './ObjectCtx';
+import { BuildCtx, ObjectIcon, TileSets, DestructableCategory, DoodadCategory, TechList } from './ObjectCtx';
 import { Popover, OverlayTrigger } from 'react-bootstrap';
 import classNames from 'classnames';
 import AppCache from 'data/cache';
 import tagString from 'data/tagString';
+import ObjectModel from './ObjectModel';
 
 const ObjectLink = ({object}) => (
   <BuildCtx.Consumer>
@@ -17,54 +18,6 @@ const ObjectLinkRaw = ({object}) => (
     {build => <Link to={`/${build}/${object.type}/${object.id}`}>{object.id}</Link>}
   </BuildCtx.Consumer>
 );
-
-const TileSets = {
-  "A": "Ashenvale",
-  "B": "Barrens",
-  "K": "Black Citadel",
-  "Y": "Cityscape",
-  "X": "Dalaran",
-  "J": "Dalaran Ruins",
-  "D": "Dungeon",
-  "C": "Felwood",
-  "I": "Icecrown Glacier",
-  "F": "Lordaeron Fall",
-  "L": "Lordaeron Summer",
-  "W": "Lordaeron Winter",
-  "N": "Northrend",
-  "O": "Outland",
-  "Z": "Sunken Ruins",
-  "G": "Underground",
-  "V": "Village",
-  "Q": "Village Fall",
-  "*": "All",
-};
-const DestructableCategory = {
-  "D": "Trees/Destructibles",
-  "P": "Pathing Blockers",
-  "B": "Bridges/Ramps",
-};
-const DoodadCategory = {
-  "O": "Props",
-  "S": "Structures",
-  "W": "Water",
-  "C": "Cliff/Terrain",
-  "E": "Environment",
-  "Z": "Cinematic",
-};
-const TechList = {
-  "HERO": "Any Hero",
-  "TALT": "Any Altar",
-  "TWN1": "Any Tier 1 Hall",
-  "TWN2": "Any Tier 2 Hall",
-  "TWN3": "Any Tier 3 Hall",
-  "TWN4": "Any Tier 4 Hall",
-  "TWN5": "Any Tier 5 Hall",
-  "TWN6": "Any Tier 6 Hall",
-  "TWN7": "Any Tier 7 Hall",
-  "TWN8": "Any Tier 8 Hall",
-  "TWN9": "Any Tier 9 Hall",
-};
 
 class StringPopupCell extends React.PureComponent {
   state = {popup: null};
@@ -102,6 +55,9 @@ export class PopupCell extends React.PureComponent {
 
   onMouseOver = e => {
     if (e.target.scrollWidth >= e.target.offsetWidth) {
+      if (e.target.closest(".ObjectModel")) {
+        return;
+      }
       this.setState({popup: true});
     }
   }
@@ -152,7 +108,7 @@ class StringIconPopup extends React.Component {
     }
     return (
       <Popover id="icon-preview" {...props} className={classNames(className, {loading: !this.state.visible})}>
-        <img src={image} onLoad={this.onLoad}/>
+        <img src={image} onLoad={this.onLoad} alt="icon"/>
       </Popover>
     );
   }
@@ -162,13 +118,10 @@ const StringIcon = ({path}) => (
   <AppCache.DataContext.Consumer>
     {cache => {
       const icon = cache.iconByName(path);
-      if (icon == null) {
-        return path;
-      }
       return (
         <OverlayTrigger placement="top" overlay={<StringIconPopup path={path} cache={cache}/>}>
           <span>
-            <span className="Icon" style={icon}/>
+            {icon != null && <span className="Icon" style={icon}/>}
             {path}
           </span>
         </OverlayTrigger>
@@ -178,6 +131,9 @@ const StringIcon = ({path}) => (
 );
 
 const ObjectSubValue = ({value, meta, data}) => {
+  if (meta.type.indexOf("Flags") >= 0) {
+    debugger;
+  }
   let type = meta.type;
   if (type === "lightningList") {
     type = "lightningEffect";
@@ -199,6 +155,7 @@ const ObjectSubValue = ({value, meta, data}) => {
 
   case "techList":
     if (TechList[value]) return TechList[value];
+    // fall through
   case "buffCode": case "buffList":
   case "effectCode": case "effectList":
   case "unitCode": case "unitList":
@@ -210,6 +167,8 @@ const ObjectSubValue = ({value, meta, data}) => {
     return obj ? <ObjectLink object={obj}/> : value;
   case "icon":
     return <StringIcon path={value}/>;
+  case "model":
+    return <ObjectModel path={value}/>;
   default:
     return value !== "_" && value || "None";
   }
@@ -238,15 +197,25 @@ const ObjectSubValueRaw = ({value, meta, data}) => {
 export const ObjectValue = ({value, meta, data, rawNames}) => {
   const SubValue = rawNames ? ObjectSubValueRaw : ObjectSubValue;
   if (meta.type.indexOf("List") >= 0) {
-    if (value == "_") {
+    if (value === "_") {
       return <PopupCell>{rawNames ? value : ""}</PopupCell>;
     }
-    if (value == "") return <PopupCell/>;
+    if (value === "") return <PopupCell/>;
     const list = [];
     value.split(",").forEach((part, index) => {
       if (list.length) list.push(rawNames ? "," : ", ");
       list.push(<SubValue value={part} meta={meta} data={data} key={index}/>);
     });
+    return <PopupCell>{list}</PopupCell>;
+  } else if (meta.type.indexOf("Flags") >= 0 && !rawNames) {
+    const list = [];
+    const iValue = parseInt(value, 10);
+    for (let flag = 0; flag < 31 && (1 << flag) <= iValue; ++flag) {
+      if ((1 << flag) & iValue) {
+        if (list.length) list.push(rawNames ? "," : ", ");
+        list.push(<SubValue value={flag} meta={meta} data={data} key={flag}/>);
+      }
+    }
     return <PopupCell>{list}</PopupCell>;
   } else if (meta.type === "string") {
     if (!rawNames && value === "_") value = "";

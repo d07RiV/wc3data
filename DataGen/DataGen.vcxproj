@@ -158,6 +158,7 @@
     <ClCompile Include="datafile\unitdata.cpp" />
     <ClCompile Include="datafile\westrings.cpp" />
     <ClCompile Include="datafile\wtsdata.cpp" />
+    <ClCompile Include="detect.cpp" />
     <ClCompile Include="hash.cpp" />
     <ClCompile Include="icons.cpp" />
     <ClCompile Include="image\image.cpp" />
@@ -275,6 +276,7 @@
     <ClInclude Include="datafile\unitdata.h" />
     <ClInclude Include="datafile\westrings.h" />
     <ClInclude Include="datafile\wtsdata.h" />
+    <ClInclude Include="detect.h" />
     <ClInclude Include="hash.h" />
     <ClInclude Include="icons.h" />
     <ClInclude Include="image\format.h" />
@@ -330,6 +332,9 @@
     <ClInclude Include="zlib\zconf.h" />
     <ClInclude Include="zlib\zlib.h" />
     <ClInclude Include="zlib\zutil.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".editorconfig" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

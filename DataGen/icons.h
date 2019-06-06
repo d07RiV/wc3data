@@ -19,7 +19,7 @@ public:
   void flush();
 
   void writeHashes(File file) {
-    file.write(hashes_.data(), hashes_.size() * sizeof(uint32));
+    file.write(hashes_.data(), hashes_.size() * sizeof(uint64));
   }
 
 private:

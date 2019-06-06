@@ -21,7 +21,7 @@ const WithData = withAsync({
   <AppCache.DataContext.Provider value={data}>
     {children}
   </AppCache.DataContext.Provider>
-), undefined, undefined);
+), undefined, () => <Redirect to="/"/>);
 WithData.contextType = AppCache.Context;
 
 function isDropFile(e) {

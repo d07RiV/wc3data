@@ -42,7 +42,7 @@ class ActiveContainer extends React.Component {
       activeStyle,
       style,
       isActive: getIsActive,
-      ...props,
+      ...props
     } = this.props;
 
     const child = React.Children.only(children);

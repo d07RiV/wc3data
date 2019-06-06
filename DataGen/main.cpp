@@ -40,14 +40,39 @@ File gzip(File src) {
   return File();
 }
 
-MemoryFile write_images(std::set<std::string> const& names, CompositeLoader& loader) {
+#define WRITE_ALL_IMAGES 1
+#define GENERATE_META 1
+#define USE_CDN 1
+#define TEST_MAP 0
+#define NUM_IMAGE_ARCHIVES 8
+
+MemoryFile write_images(std::set<istring> const& names, CompositeLoader& loader) {
   ImageStorage images(16, 16, 16, 16);
-  HashArchive imarc;
+#if WRITE_ALL_IMAGES
+  HashArchive imarc[NUM_IMAGE_ARCHIVES];
+  HashArchive mdxarc;
+  File listFile("rootlist.txt", "wb");
+#endif
   for (auto fn : Logger::loop(names)) {
-    auto ext = path::ext(fn);
+    istring ext = path::ext(fn);
+#if WRITE_ALL_IMAGES
+    if (ext == ".mdx" || ext == ".slk" || ext == ".txt") {
+      File f = loader.load(fn.c_str());
+      if (f) {
+        mdxarc.add(fn.c_str(), f, true);
+        listFile.printf("%s\n", fn.c_str());
+      }
+      continue;
+    }
+#endif
     if (ext != ".blp" && ext != ".dds" && ext != ".gif" && ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".tga") {
       continue;
     }
+#if !WRITE_ALL_IMAGES
+    if (fn.find("replaceabletextures\\") != 0) {
+      continue;
+    }
+#endif
     File f = loader.load(fn.c_str());
     Image img(f);
     if (img) {
@@ -55,27 +80,35 @@ MemoryFile write_images(std::set<std::string> const& names, CompositeLoader& loa
       if (fn.find("replaceabletextures\\") == 0) {
         images.add(hash, img);
       }
-      File& imgf = imarc.create(hash);
+#if WRITE_ALL_IMAGES
+      File& imgf = imarc[hash % NUM_IMAGE_ARCHIVES].create(hash);
       img.write(imgf);
-      imgf.seek(0);
-      File(path::root() / "png" / path::path(fn) / path::title(fn) + ".png", "wb").copy(imgf);
+      listFile.printf("%s\n", fn.c_str());
+      //imgf.seek(0);
+      //File(path::root() / "png" / path::path(fn) / path::title(fn) + ".png", "wb").copy(imgf);
+#endif
     }
   }
-  imarc.write(File(path::root() / "images.gzx", "wb"));
+#if WRITE_ALL_IMAGES
+  for ( size_t i = 0; i < NUM_IMAGE_ARCHIVES; ++i ) {
+    imarc[i].write(File(path::root() / fmtstring("images%d.gzx", (int) i), "wb"));
+  }
+  mdxarc.write(File(path::root() / "models.gzx", "wb"));
+#endif
   MemoryFile hashes;
   images.writeHashes(hashes);
   hashes.seek(0);
   return hashes;
 }
 
-MemoryFile write_meta(std::set<std::string> const& names, CompositeLoader& loader, File icons) {
+MemoryFile write_meta(std::set<istring> const& names, CompositeLoader& loader, File icons) {
   HashArchive metaArc;
   metaArc.add("images.dat", icons, false);
 
-  std::set<std::string> toLoad;
+  std::set<istring> toLoad;
   for (auto fn : names) {
-    auto dir = path::path(fn);
-    auto ext = path::ext(fn);
+    istring dir = path::path(fn);
+    istring ext = path::ext(fn);
     if ((dir == "ui" || dir == "units" || dir == "doodads") && (ext == ".txt" || ext == ".slk")) {
       toLoad.insert(fn);
     }
@@ -100,10 +133,6 @@ MemoryFile write_meta(std::set<std::string> const& names, CompositeLoader& loade
   return metaFile;
 }
 
-#define GENERATE_META 0
-#define USE_CDN 1
-#define TEST_MAP 0
-
 int main() {
   CompositeLoader loader;
 
@@ -113,6 +142,7 @@ int main() {
   //build = "38f31eb67143d03da05854bfb559ed42"; // 1.30.1.10211
   //build = "34872da6a3842639ff2d2a86ee9b3755"; // 1.30.2.11024
   //build = "e4473116a14ec84d2e00c46af4c3f42f"; // 1.30.2.11029
+  //build = "8741363b75f97365ff584fda9d4b804f"; // 1.30.2.11065
   auto cdnloader = std::make_shared<CdnLoader>(build);
 
   //auto mpqloader = std::make_shared<mpq::Archive>(File(R"(G:\Games\Warcraft III\Maps\Download\DotA v6.79c.w3x)"));
@@ -124,7 +154,7 @@ int main() {
   loader.add(std::make_shared<PrefixLoader>("War3.mpq:", cdnloader));
   loader.add(cdnloader);
 
-  std::set<std::string> names;
+  std::set<istring> names;
   for (auto fn : cdnloader->files()) {
     size_t colon = fn.find_last_of(':');
     if (colon != std::string::npos) {
@@ -141,12 +171,12 @@ int main() {
     loader.add(arc);
   }
 
-  std::set<std::string> names;
+  std::set<istring> names;
   {
     File listf(path::root() / "listfile.txt", "rb");
     std::string line;
     while (listf.getline(line)) {
-      names.insert(strlower(trim(line)));
+      names.insert(trim(line));
     }
   }
 
@@ -185,7 +215,7 @@ int main() {
   Logger::log("Wrote %s", info.version.c_str());
 #else
   File meta(path::root() / "meta.gzx", "rb");
-  File map(path::root() / "map3.w3x", "rb");
+  File map(path::root() / "war.w3m", "rb");
   MapParser parser(meta, map);
 
   uint32 t0 = GetTickCount();

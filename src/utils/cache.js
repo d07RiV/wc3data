@@ -21,25 +21,30 @@ class Cache {
   }
   fetch(url, opt) {
     opt = opt || {};
-    let curl = url;
+    const type = (opt.type || "json");
+    let curl = `${url}$${type}`;
     if (opt.info) curl += "$info";
-    if (opt.binary) curl += "$binary";
     if (!opt.refresh && this.cache[curl]) return this.cache[curl];
     const get = this.cache[curl] = fetch(url).then(response => {
       if (response.ok) {
-        if (opt.binary) return response.arrayBuffer();
-        if (!opt.info) {
-          let res = response.json();
-          if (opt.process) {
-            res = res.then(v => opt.process(v));
+        if (type === "binary") {
+          return response.arrayBuffer();
+        } else if (type === "text") {
+          return response.text();
+        } else {
+          if (!opt.info) {
+            let res = response.json();
+            if (opt.process) {
+              res = res.then(v => opt.process(v));
+            }
+            return res;
           }
-          return res;
+          return response.text().then(text => ({
+            compressed: parseInt(response.headers.get("Content-Length"), 10),
+            uncompressed: text.length,
+            json: JSON.parse(text)
+          }));
         }
-        return response.text().then(text => ({
-          compressed: parseInt(response.headers.get("Content-Length"), 10),
-          uncompressed: text.length,
-          json: JSON.parse(text)
-        }));
       } else {
         return response.json().then(err => Promise.reject(err));
       }

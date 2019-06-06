@@ -136,6 +136,7 @@
       border-radius: 8px;
       max-width: 360px;
       white-space: normal;
+      z-index: 50;
     }
     &.top > div {
       bottom: -1px;
@@ -143,5 +144,27 @@
     &.bottom > div {
       top: -1px;
     }
+  }
+}
+
+.ObjectModel {
+  position: fixed;
+  left: 0; top: 0; right: 0; bottom: 0;
+  z-index: 100;
+  background-color: rgba(0, 0, 0, 0.5);
+  > div {
+    position: absolute;
+    left: 10%;
+    top: 10%;
+    right: 10%;
+    bottom: 10%;
+  }
+}
+
+#icon-preview.loading {
+  visibility: hidden;
+  img {
+    width: 64px;
+    height: 64px;
   }
 }

@@ -8,7 +8,7 @@
       "type": "chrome",
       "request": "launch",
       "name": "Launch Chrome against localhost",
-      "url": "http://localhost:3000/game/",
+      "url": "http://localhost:3000/",
       "webRoot": "${workspaceRoot}"
     },
     {
@@ -16,7 +16,7 @@
       "type": "chrome",
       "request": "attach",
       "port": 9222,
-      "url": "http://localhost:3000/game/*",
+      "url": "http://localhost:3000/*",
       "webRoot": "${workspaceRoot}",
       "sourceMapPathOverrides": {
         "webpack:///src/*": "${webRoot}/*"

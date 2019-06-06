@@ -275,8 +275,11 @@ MemoryFile MapParser::processObjects() {
         }
       }
 
-      out.keyNumber("icon1", pathHash1(art.c_str()));
-      out.keyNumber("icon2", pathHash2(art.c_str()));
+      out.onMapKey("icon");
+      out.onOpenArray();
+      out.onNumber(pathHash1(art.c_str()));
+      out.onNumber(pathHash2(art.c_str()));
+      out.onCloseArray();
 
       std::string uname = unit->getStringData("EditorName", 0);
       if (uname.empty() || uname == "_") {
@@ -415,7 +418,7 @@ MemoryFile MapParser::processAll() {
               ext = ".mdx";
             }
           }
-          listFile.printf("Unknown\\%08X%08X%s\n", he.name1, he.name2, ext);
+          listFile.printf("Unknown\\%08X%08X%s\n", he.name2, he.name1, ext);
           ++numMissing;
         }
       } else if (mapArchive->fileExists(i)) {

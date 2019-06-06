@@ -105,6 +105,10 @@
                           none;              
       }
     }
+    &.audio {
+      overflow: auto;
+      padding: 12px;
+    }
   }
 
   .HexLines {
@@ -144,6 +148,52 @@
       color: #444;
       margin-left: 12px;
       user-select: none;
+    }
+  }
+}
+
+.FileModel {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background-color: #4c4c4c;
+
+  .log {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    margin: 0;
+    .error {
+      color: #f00;
+    }
+  }
+  .controls {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    margin: 0;
+    label {
+      display: block;
+      margin-bottom: 6px;
+      text-align: right;
+      color: #fff;
+      font-weight: normal;
+      select {
+        width: 200px;
+        color: #222;
+        margin-left: 6px;
+      }
+    }
+  }
+  .credits {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    margin: 0;
+    color: #ffcc00;
+    font-style: italic;
+    a {
+      color: #ffcc00;
+      text-decoration: underline;
     }
   }
 }

@@ -40,7 +40,7 @@ public:
       bool operator!=(Iterator const& rhs) const {
         return iter_ != rhs.iter_;
       }
-      std::string const& operator*() {
+      typename List::value_type const& operator*() {
         return *iter_;
       }
     private:

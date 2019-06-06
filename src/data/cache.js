@@ -1,6 +1,6 @@
 import React from 'react';
 import { Cache } from 'utils';
-import pathHash from './hash';
+import pathHash, { makeUid } from './hash';
 import loadArchive from 'maps/archive';
 import MapParser from 'maps/parser';
 import { notifyMessage } from 'notify';
@@ -16,14 +16,6 @@ const postProcess = data => {
 };
 
 const readFile = file => new Promise((resolve, reject) => {
-  // const a = document.createElement("a");
-  // document.body.appendChild(a);
-  // a.style.display = "none";
-  // const url = URL.createObjectURL(file);
-  // a.href = url;
-  // a.download = file.name;
-  // a.click();
-  // URL.revokeObjectURL(url);
   const reader = new FileReader();
   reader.onload = () => resolve(reader.result);
   reader.onerror = () => reject(reader.error);
@@ -43,11 +35,18 @@ class BaseData {
     return this.cache.fetch(`/api/${this.id}.json`, {global: true, process: postProcess});
   }
 
+  listFile() {
+    return this.cache.fetch(`/api/rootlist.txt`, {global: true, type: "text"});
+  }
+
   hasFile() {
     return false;
   }
 
   file() {
+    return null;
+  }
+  binary() {
     return null;
   }
   image(name) {
@@ -69,8 +68,8 @@ class BaseData {
 const fileId = name => {
   if (typeof name === "string") {
     return pathHash(name);
-  } else if (typeof name === "number") {
-    return name | 0;
+  } else if (name != null && typeof name[0] === "number") {
+    return name;
   } else {
     return null;
   }
@@ -85,6 +84,7 @@ class MapData {
     this.archive = archive;
     this.id = id;
     this.name = name;
+    this.isMap = true;
   }
 
   objects() {
@@ -95,16 +95,22 @@ class MapData {
     return this.objects_ = Promise.resolve(text ? postProcess(JSON.parse(text)) : null);
   }
 
+  listFile() {
+    return this.file("listfile.txt");
+  }
+
   hasFile(name) {
     return this.archive.hasFile(fileId(name));
   }
 
   file(name) {
-    const id = fileId(name);
-    if (this.files_.hasOwnProperty(id)) {
-      return this.files_[id];
+    if (this.files_.hasOwnProperty(name)) {
+      return this.files_[name];
     }
-    return this.files_[id] = this.archive.loadFile(id);
+    return this.files_[name] = this.archive.loadFile(name);
+  }
+  binary(name) {
+    return this.archive.loadBinary(name);
   }
 
   jass(options) {
@@ -112,20 +118,14 @@ class MapData {
   }
 
   image(name) {
-    const id = fileId(name);
-    if (!this.images_.hasOwnProperty(id)) {
-      this.images_[id] = this.archive.loadImage(id);
-    }
-    return this.images_[id] || this.cache.image(name);
+    return this.archive.loadImage(name) || this.cache.image(name);
   }
 
   icon(id) {
-    if (!this.images_.hasOwnProperty(id)) {
-      this.images_[id] = this.archive.loadImage(id);
-    }
-    if (this.images_[id]) {
+    const image = this.archive.loadImage(id);
+    if (image) {
       return {
-        backgroundImage: `url(${this.images_[id]})`,
+        backgroundImage: `url(${image})`,
         backgroundSize: "100%",
       };
     } else {
@@ -156,7 +156,7 @@ export default class AppCache extends Cache {
     }
 
     const proms = [
-      this.fetch('/api/images.dat', {binary: true}),
+      this.fetch('/api/images.dat', {type: "binary"}),
       this.fetch('/api/versions.json'),
     ];
     if (this.nameStore) {
@@ -164,8 +164,12 @@ export default class AppCache extends Cache {
     }
     this.ready = Promise.all(proms).then(([images, versions, names]) => {
       this.icons_ = new Map();
-      const imageList = new Int32Array(images);
-      imageList.forEach((id, index) => this.icons_.set(id, index + 1000 * 256));
+      const imageList = new Uint32Array(images);
+      for (let i = 0; i < imageList.length; i += 2) {
+        // this will cause precision loss but we have to deal with it
+        const uid = makeUid(imageList.subarray(i, i + 2));
+        this.icons_.set(uid, (i / 2) + 1000 * 256);
+      }
   
       this.versions = versions.versions;
 
@@ -190,7 +194,7 @@ export default class AppCache extends Cache {
   maps = {};
 
   metaRaw() {
-    return this.fetch('/api/meta.gzx', {binary: true, global: true});
+    return this.fetch('/api/meta.gzx', {type: "binary", global: true});
   }
   meta() {
     if (this.meta_) {
@@ -209,14 +213,15 @@ export default class AppCache extends Cache {
         return this.mapData_[build];
       }
       if (this.custom && this.custom[build]) {
-        return this.mapData_[build] = this.fetch(`/api/${this.custom[build]}`, {binary: true, global: true})
+        return this.mapData_[build] = this.fetch(`/api/${this.custom[build]}`, {type: "binary", global: true})
           .then(data => loadArchive(data))
           .then(arc => new MapData(this, arc, build, this.maps[build]));
       } else {
         return this.mapData_[build] = this.dataStore.get(build)
           .then(blob => readFile(blob))
           .then(data => loadArchive(data))
-          .then(arc => new MapData(this, arc, build, this.maps[build]));
+          .then(arc => new MapData(this, arc, build, this.maps[build]))
+          .catch(err => Promise.reject(notifyMessage(err.toString(), "danger")));
       }
     } else if (this.versions[build]) {
       if (this.baseData_[build]) {
@@ -231,7 +236,7 @@ export default class AppCache extends Cache {
   }
 
   icon(id) {
-    const index = this.icons_.get(id | 0);
+    const index = this.icons_.get(makeUid(id));
     if (index) {
       const col = index % 16;
       const row = ((index / 16) | 0) % 16;
@@ -250,13 +255,14 @@ export default class AppCache extends Cache {
 
   image(name) {
     let id = fileId(name);
-    if (!this.icons_.has(id)) {
-      return null;
-    }
-    if (id < 0) {
-      id += 4294967296;
-    }
-    return `/api/images/${id}.png`;
+    const uid = makeUid(id);
+    return `/api/images/${uid}`;
+  }
+
+  binary(name) {
+    let id = fileId(name);
+    const uid = makeUid(id);
+    return `/api/files/${uid}`;
   }
 
   loadMap(file) {
@@ -285,9 +291,10 @@ export default class AppCache extends Cache {
               this.dataStore.remove(id);
             });
           }
-    
+
           this.maps = {...this.maps, [id]: file.name};
-          this.mapData_[id] = loadArchive(data).then(arc => new MapData(this, arc, id, file.name));
+          this.mapData_[id] = loadArchive(data).then(arc => new MapData(this, arc, id, file.name))
+            .catch(err => Promise.reject(notifyMessage(err.toString(), "danger")));
 
           this.root.finishMapLoad(id);
         })

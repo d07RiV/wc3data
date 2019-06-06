@@ -361,6 +361,9 @@
     <ClCompile Include="image\imagejpg.cpp">
       <Filter>image</Filter>
     </ClCompile>
+    <ClCompile Include="detect.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="datafile\slk.h">
@@ -552,5 +555,11 @@
     <ClInclude Include="parse.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="detect.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".editorconfig" />
   </ItemGroup>
 </Project>
