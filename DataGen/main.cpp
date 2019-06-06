@@ -40,8 +40,8 @@ File gzip(File src) {
   return File();
 }
 
-#define WRITE_ALL_IMAGES 1
-#define GENERATE_META 1
+#define WRITE_ALL_IMAGES 0
+#define GENERATE_META 0
 #define USE_CDN 1
 #define TEST_MAP 0
 #define NUM_IMAGE_ARCHIVES 8
@@ -55,6 +55,15 @@ MemoryFile write_images(std::set<istring> const& names, CompositeLoader& loader)
 #endif
   for (auto fn : Logger::loop(names)) {
     istring ext = path::ext(fn);
+    if ( ext == ".txt" || ext == ".slk" )
+    {
+        File f = loader.load( fn.c_str() );
+        if ( f )
+        {
+            File( path::root() / fn, "wb" ).copy( f );
+        }
+    }
+
 #if WRITE_ALL_IMAGES
     if (ext == ".mdx" || ext == ".slk" || ext == ".txt") {
       File f = loader.load(fn.c_str());
@@ -149,9 +158,10 @@ int main() {
   //mpqloader->loadListFile();
 
   //loader.add(mpqloader);
-  loader.add(std::make_shared<PrefixLoader>("enUS-", cdnloader));
-  loader.add(std::make_shared<PrefixLoader>("enUS-War3Local.mpq:", cdnloader));
-  loader.add(std::make_shared<PrefixLoader>("War3.mpq:", cdnloader));
+  loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Locales\\enUS.w3mod:_Balance\\Custom_V1.w3mod:", cdnloader));
+  loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Locales\\enUS.w3mod:", cdnloader));
+  loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Balance\\Custom_V1.w3mod:", cdnloader));
+  loader.add(std::make_shared<PrefixLoader>("War3.w3mod:", cdnloader));
   loader.add(cdnloader);
 
   std::set<istring> names;

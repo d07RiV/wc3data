@@ -95,6 +95,14 @@ SLKFile::SLKFile(File file)
           }
         }
       }
+    } else if (e.val == "F") {
+      while ((cur = SLKReadEntry(cur, e))) {
+        if (e.type == 'X') {
+          curx = stoi(e.val) - 1;
+        } else if (e.type == 'Y') {
+          cury = stoi(e.val) - 1;
+        }
+      }
     }
   }
 }
