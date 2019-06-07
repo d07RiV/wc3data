@@ -117,8 +117,8 @@ class MapData {
     return this.archive.loadJASS(options);
   }
 
-  image(name) {
-    return this.archive.loadImage(name) || this.cache.image(name);
+  image(name, tileset) {
+    return this.archive.loadImage(name) || this.cache.image(name, tileset);
   }
 
   icon(id) {
@@ -253,16 +253,24 @@ export default class AppCache extends Cache {
     return this.icon(pathHash(name));
   }
 
-  image(name) {
+  image(name, tileset) {
     let id = fileId(name);
     const uid = makeUid(id);
-    return `/api/images/${uid}`;
+    let path = `/api/images/${uid}`;
+    if (tileset) {
+      path += `?tileset=${tileset}`;
+    }
+    return path;
   }
 
-  binary(name) {
+  binary(name, tileset) {
     let id = fileId(name);
     const uid = makeUid(id);
-    return `/api/files/${uid}`;
+    let path = `/api/files/${uid}`;
+    if (tileset) {
+      path += `?tileset=${tileset}`;
+    }
+    return path;
   }
 
   loadMap(file) {

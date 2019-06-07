@@ -290,14 +290,14 @@ export default class ModelViewer extends EventEmitter {
    * @param {?function} callback
    * @return {GenericResource}
    */
-  loadGeneric(path, dataType, callback) {
+  loadGeneric(path, dataType, callback, originalPath) {
     let resource = this.resourcesMap.get(path);
 
     if (resource) {
       return resource;
     }
 
-    resource = new GenericResource({viewer: this, handler: callback, fetchUrl: path});
+    resource = new GenericResource({viewer: this, handler: callback, fetchUrl: path, path: originalPath});
 
     this.resources.push(resource);
     this.resourcesMap.set(path, resource);

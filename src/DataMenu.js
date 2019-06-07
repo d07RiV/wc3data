@@ -31,6 +31,11 @@ const DataMenu = () => (
           <NavItem eventKey="files">Files</NavItem>
         </LinkContainer>
         <ObjectMenu/>
+        {(!!data.isMap) && (
+          <LinkContainer to={`/${data.id}/map`}>
+            <NavItem eventKey="map">Map</NavItem>
+          </LinkContainer>
+        )}
         {(data.hasFile("war3map.j") || data.hasFile("Scripts\\war3map.j")) && (
           <LinkContainer to={`/${data.id}/script`}>
             <NavItem eventKey="script">Script</NavItem>
