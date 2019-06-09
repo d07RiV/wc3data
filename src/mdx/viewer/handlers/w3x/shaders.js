@@ -73,13 +73,13 @@ export default {
     const vec3 lightDirection = normalize(vec3(-0.3, -0.3, 0.25));
 
     vec4 blend(vec4 color, vec2 uv) {
-      vec4 texel = texture2D(u_tilesets, uv).bgra;
+      vec4 texel = texture2D(u_tilesets, uv).rgba;
 
       return mix(color, texel, texel.a);
     }
 
     void main() {
-      vec4 color = texture2D(u_tilesets, v_uv[0]).bgra;
+      vec4 color = texture2D(u_tilesets, v_uv[0]).rgba;
       color = blend(color, v_uv[1]);
       color = blend(color, v_uv[2]);
       color = blend(color, v_uv[3]);
@@ -147,7 +147,7 @@ export default {
     varying vec4 v_color;
 
     void main() {
-      gl_FragColor = texture2D(u_waterMap, v_uv).bgra * v_color;
+      gl_FragColor = texture2D(u_waterMap, v_uv).rgba * v_color;
     }
   `,
   vsCliffs: `
@@ -172,23 +172,25 @@ export default {
       vec2 halfPixel = u_pixel * 0.5;
 
       // The bottom left corner of the map tile this vertex is on.
-      vec2 corner = floor((a_instancePosition.xy - vec2(1.0, 0.0) - u_centerOffset.xy) / 128.0);
+      vec2 corner = floor((a_instancePosition.xy - u_centerOffset.xy) / 128.0);
 
       // Get the 4 closest heights in the height map.
       float bottomLeft = texture2D(u_heightMap, corner * u_pixel + halfPixel).a;
       float bottomRight = texture2D(u_heightMap, (corner + vec2(1.0, 0.0)) * u_pixel + halfPixel).a;
       float topLeft = texture2D(u_heightMap, (corner + vec2(0.0, 1.0)) * u_pixel + halfPixel).a;
       float topRight = texture2D(u_heightMap, (corner + vec2(1.0, 1.0)) * u_pixel + halfPixel).a;
+
+      vec3 position = vec3(a_position.y, -a_position.x, a_position.z);
       
       // Do a bilinear interpolation between the heights to get the final value.
-      float bottom = mix(bottomRight, bottomLeft, -a_position.x / 128.0);
-      float top = mix(topRight, topLeft, -a_position.x / 128.0);
-      float height = mix(bottom, top, a_position.y / 128.0);
+      float bottom = mix(bottomLeft, bottomRight, position.x / 128.0);
+      float top = mix(topLeft, topRight, position.x / 128.0);
+      float height = mix(bottom, top, position.y / 128.0);
 
       v_normal = a_normal;
       v_uv = a_uv;
       v_texture = a_instanceTexture;
-      v_position = a_position + vec3(a_instancePosition.xy, a_instancePosition.z + height * 128.0);
+      v_position = position + vec3(a_instancePosition.xy, a_instancePosition.z + height * 128.0);
 
       gl_Position = u_mvp * vec4(v_position, 1.0);
     }
@@ -214,7 +216,7 @@ export default {
     }
 
     void main() {
-      vec4 color = sample(int(v_texture), v_uv).bgra;
+      vec4 color = sample(int(v_texture+0.01), v_uv).rgba;
 
       vec3 faceNormal = cross(dFdx(v_position), dFdy(v_position));
       vec3 normal = normalize((faceNormal + v_normal) * 0.5);
@@ -257,7 +259,7 @@ export default {
     const vec3 lightDirection = normalize(vec3(-0.3, -0.3, 0.25));
 
     void main() {
-      vec4 color = texture2D(u_texture, v_uv).bgra;
+      vec4 color = texture2D(u_texture, v_uv).rgba;
 
       // 1bit Alpha
       if (u_alphaTest && color.a < 0.75) {

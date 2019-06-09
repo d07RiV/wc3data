@@ -1,6 +1,7 @@
 import ParserBinary from './MapParser.wasm';
 import ParserModule from './MapParser.jscc';
 
+/* eslint-disable-next-line no-restricted-globals */
 self.onmessage = function(e) {
   ParserModule({
     locateFile(name) {
@@ -23,6 +24,7 @@ self.onmessage = function(e) {
 
       wasm._process(addr_meta, meta.length, addr_map, map.length);
     } catch (e) {
+      /* eslint-disable-next-line no-restricted-globals */
       self.postMessage({error: e.toString()});
     }
   });

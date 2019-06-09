@@ -40,9 +40,10 @@ File gzip(File src) {
   return File();
 }
 
-#define WRITE_ALL_IMAGES 0
-#define GENERATE_META 0
+#define WRITE_ALL_IMAGES 1
+#define GENERATE_META 1
 #define USE_CDN 1
+#define GENERATE_MAPS 0
 #define TEST_MAP 0
 #define NUM_IMAGE_ARCHIVES 8
 
@@ -55,26 +56,29 @@ MemoryFile write_images(std::set<istring> const& names, CompositeLoader& loader)
 #endif
   for (auto fn : Logger::loop(names)) {
     istring ext = path::ext(fn);
-    if ( ext == ".txt" || ext == ".slk" )
-    {
-        File f = loader.load( fn.c_str() );
-        if ( f )
-        {
-            File( path::root() / fn, "wb" ).copy( f );
-        }
+
+    bool isImage = (ext == ".blp" || ext == ".dds" || ext == ".gif" || ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".tga");
+    istring canonPath = fn;
+    if (isImage) {
+      canonPath = path::path(fn) / path::title(fn);
+    }
+    uint64 hash = pathHash(canonPath.c_str());
+
+    if (istring(std::string(fn).substr(1, 7)) == istring(".w3mod:") && isalpha((unsigned char) fn[0])) {
+      hash = pathHash(canonPath.c_str() + 8) + (fn[0] - 'A' + 1);
     }
 
 #if WRITE_ALL_IMAGES
     if (ext == ".mdx" || ext == ".slk" || ext == ".txt") {
       File f = loader.load(fn.c_str());
       if (f) {
-        mdxarc.add(fn.c_str(), f, true);
+        mdxarc.add(hash, f, true);
         listFile.printf("%s\n", fn.c_str());
       }
       continue;
     }
 #endif
-    if (ext != ".blp" && ext != ".dds" && ext != ".gif" && ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".tga") {
+    if (!isImage) {
       continue;
     }
 #if !WRITE_ALL_IMAGES
@@ -85,7 +89,6 @@ MemoryFile write_images(std::set<istring> const& names, CompositeLoader& loader)
     File f = loader.load(fn.c_str());
     Image img(f);
     if (img) {
-      uint64 hash = pathHash(fn.c_str());
       if (fn.find("replaceabletextures\\") == 0) {
         images.add(hash, img);
       }
@@ -93,8 +96,11 @@ MemoryFile write_images(std::set<istring> const& names, CompositeLoader& loader)
       File& imgf = imarc[hash % NUM_IMAGE_ARCHIVES].create(hash);
       img.write(imgf);
       listFile.printf("%s\n", fn.c_str());
-      //imgf.seek(0);
-      //File(path::root() / "png" / path::path(fn) / path::title(fn) + ".png", "wb").copy(imgf);
+      imgf.seek(0);
+      for (auto& c : fn) {
+        if (c == ':') c = '/';
+      }
+      File(path::root() / "png" / path::path(fn) / path::title(fn) + ".png", "wb").copy(imgf);
 #endif
     }
   }
@@ -102,7 +108,7 @@ MemoryFile write_images(std::set<istring> const& names, CompositeLoader& loader)
   for ( size_t i = 0; i < NUM_IMAGE_ARCHIVES; ++i ) {
     imarc[i].write(File(path::root() / fmtstring("images%d.gzx", (int) i), "wb"));
   }
-  mdxarc.write(File(path::root() / "models.gzx", "wb"));
+  mdxarc.write(File(path::root() / "files.gzx", "wb"));
 #endif
   MemoryFile hashes;
   images.writeHashes(hashes);
@@ -144,6 +150,16 @@ MemoryFile write_meta(std::set<istring> const& names, CompositeLoader& loader, F
 
 int main() {
   CompositeLoader loader;
+  mpq::Archive mapa(File(path::root() / "maps/original.w3x"));
+  mapa.loadListFile();
+  for (size_t i = 0; i < mapa.getMaxFiles(); ++i) {
+    auto name = mapa.getFileName(i);
+    File f = mapa.load(i);
+    if (name && f) {
+      File(path::root() / "maps/original" / name, "wb").copy(f);
+    }
+  }
+  return 0;
 
 #if !TEST_MAP
 #if USE_CDN
@@ -161,14 +177,21 @@ int main() {
   loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Locales\\enUS.w3mod:_Balance\\Custom_V1.w3mod:", cdnloader));
   loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Locales\\enUS.w3mod:", cdnloader));
   loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Balance\\Custom_V1.w3mod:", cdnloader));
+  loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Tilesets\\", cdnloader));
   loader.add(std::make_shared<PrefixLoader>("War3.w3mod:", cdnloader));
   loader.add(cdnloader);
 
+  istring tset = "War3.w3mod:_Tilesets\\";
+
   std::set<istring> names;
   for (auto fn : cdnloader->files()) {
-    size_t colon = fn.find_last_of(':');
-    if (colon != std::string::npos) {
-      fn = fn.substr(colon + 1);
+    if (istring(fn.substr(0, tset.size())) == tset) {
+      fn = fn.substr(tset.size());
+    } else {
+      size_t colon = fn.find_last_of(':');
+      if (colon != std::string::npos) {
+        fn = fn.substr(colon + 1);
+      }
     }
     names.insert(fn);
   }
@@ -223,6 +246,42 @@ int main() {
   json::write(File(path::root() / "versions.json", "wb"), versions);
 
   Logger::log("Wrote %s", info.version.c_str());
+
+#if GENERATE_MAPS
+  json::Value mlist;
+  std::vector<std::string> mapnames;
+  for (auto fn : names) {
+    istring ext = path::ext(fn);
+    if (ext == ".w3x" || ext == ".w3m") {
+      mapnames.push_back(fn);
+    }
+  }
+  for (auto fn : Logger::loop(mapnames)) {
+    auto hash = pathHash(fn.c_str());
+    if (File mf = loader.load(fn.c_str())) {
+      fn = std::string(fn).substr(0, fn.length() - 4);
+      for (auto& c : fn) {
+        if (c == '\\' || c == '/') {
+          c = '~';
+        }
+      }
+
+      MapParser parser(meta, mf);
+      auto pf = parser.processAll();
+      File(fmtstring("maps/%s.gzx", fn.c_str()).c_str(), "wb").copy(pf);
+
+      std::string name = parser.info["name"].getString();
+      std::string desc = parser.info["description"].getString();
+
+      auto& mdata = mlist[fmtstring("%016llx", hash)];
+      mdata["name"] = name;
+      mdata["data"] = fmtstring("maps/%s.gzx", fn.c_str());
+      mdata["desc"] = desc;
+    }
+  }
+  json::write(File("maps.json", "wb"), mlist);
+#endif
+
 #else
   File meta(path::root() / "meta.gzx", "rb");
   File map(path::root() / "war.w3m", "rb");

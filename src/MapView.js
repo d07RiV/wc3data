@@ -15,12 +15,12 @@ export default class MapHome extends React.Component {
     errors: [],
   }
 
-  yaw = -Math.PI / 2;
+  yaw = 0;
   pitch = -Math.PI / 4;
-  distance = 400;
+  distance = 2000;
   center = vec3.create();
-  minDistance = 8;
-  maxDistance = 3000;
+  minDistance = 500;
+  maxDistance = 10000;
   
   componentWillUnmount() {
     if (this.frame) {
@@ -30,28 +30,39 @@ export default class MapHome extends React.Component {
     this.removeEvents();
   }
 
-  
+  onContextMenu = e => {
+    e.preventDefault();
+  }
   onMouseDown = e => {
     document.addEventListener("mousemove", this.onMouseMove, true);
     document.addEventListener("mouseup", this.onMouseUp, true);
     this.dragPos = {x: e.clientX, y: e.clientY};
+    this.dragButton = (e.ctrlKey ? 2 : 0);
     e.preventDefault();
   }
   onMouseMove = e => {
     if (this.dragPos && this.canvas) {
       const dx = e.clientX - this.dragPos.x,
-        dy = e.clientY - this.dragPos.y;
+      dy = e.clientY - this.dragPos.y;
       const dim = (this.canvas.width + this.canvas.height) / 2;
-      this.yaw += dx * 2 * Math.PI / dim;
-      this.pitch += dy * 2 * Math.PI / dim;
-      while (this.yaw > Math.PI) {
-        this.yaw -= Math.PI * 2;
+      if (this.dragButton === 2) {
+        this.yaw += dx * 2 * Math.PI / dim;
+        this.pitch += dy * 2 * Math.PI / dim;
+        while (this.yaw > Math.PI) {
+          this.yaw -= Math.PI * 2;
+        }
+        while (this.yaw < -Math.PI) {
+          this.yaw += Math.PI * 2;
+        }
+        this.pitch = Math.min(this.pitch, 0);
+        this.pitch = Math.max(this.pitch, -Math.PI / 2 + 0.05);
+      } else if (this.dragButton === 0) {
+        const vx = vec3.fromValues(-Math.cos(this.yaw), Math.sin(this.yaw), 0);
+        const vy = vec3.fromValues(vx[1], -vx[0], 0);
+        const vel = this.distance / dim;
+        vec3.scaleAndAdd(this.center, this.center, vx, dx * vel);
+        vec3.scaleAndAdd(this.center, this.center, vy, dy * vel);
       }
-      while (this.yaw < -Math.PI) {
-        this.yaw += Math.PI * 2;
-      }
-      this.pitch = Math.min(this.pitch, 0);
-      this.pitch = Math.max(this.pitch, -Math.PI);
       this.dragPos = {x: e.clientX, y: e.clientY};
     }
     e.preventDefault();
@@ -79,7 +90,26 @@ export default class MapHome extends React.Component {
     this.frame = requestAnimationFrame(this.animate);
     this.scene.camera.viewport([0, 0, this.canvas.width, this.canvas.height]);
 
-    this.scene.camera.perspective(Math.PI / 4, this.canvas.width / this.canvas.height, this.minDistance, this.maxDistance);
+    if (this.viewer.mapSize) {
+      const size = this.viewer.mapSize, offset = this.viewer.centerOffset;
+      this.center[0] = Math.max(offset[0], Math.min(this.center[0], 128 * size[0] + offset[0]));
+      this.center[1] = Math.max(offset[1], Math.min(this.center[1], 128 * size[1] + offset[1]));
+      if (!this.rOffsets) {
+        this.rOffsets = [];
+        for (let i = 0; i < 32; ++i) {
+          const ang = Math.random() * Math.PI * 2;
+          const dist = Math.random();
+          this.rOffsets.push([Math.cos(ang) * dist, Math.sin(ang) * dist]);
+        }
+      }
+      this.center[2] = 0;
+      this.rOffsets.forEach(([x, y]) => {
+        this.center[2] += this.viewer.heightAt(this.center[0] + x * this.distance / 4, this.center[1] + y * this.distance / 4);
+      });
+      this.center[2] /= this.rOffsets.length;
+    }
+
+    this.scene.camera.perspective(Math.PI / 4, this.canvas.width / this.canvas.height, this.minDistance / 4, this.maxDistance * 2);
     this.scene.camera.setRotationAroundAngles(this.yaw, this.pitch, this.center, this.distance);
 
     this.viewer.updateAndRender();
@@ -124,23 +154,26 @@ export default class MapHome extends React.Component {
   render() {
     const { errors } = this.state;
     return (
-      <div className="FileModel">
-        <AutoSizer>
-          {({width, height}) => (
-            <canvas
-            onMouseDown={this.onMouseDown}
-            onWheel={this.onMouseWheel}
-            ref={n => this.canvas = n}
-            width={Math.max(width, 100)}
-            height={Math.max(height, 100)}
-            />
-          )}
-        </AutoSizer>
-        <ul className="log">
-          {errors.map((err, idx) => <li key={idx} className="error">{err}</li>)}
-        </ul>
-        <div className="credits">
-          Model viewer by <a href="https://github.com/flowtsohg/mdx-m3-viewer" target="_blank">flowtsohg@github</a>
+      <div className="ModelPage">
+        <div className="FileModel">
+          <AutoSizer>
+            {({width, height}) => (
+              <canvas
+              onMouseDown={this.onMouseDown}
+              onContextMenu={this.onContextMenu}
+              onWheel={this.onMouseWheel}
+              ref={n => this.canvas = n}
+              width={Math.max(width, 100)}
+              height={Math.max(height, 100)}
+              />
+            )}
+          </AutoSizer>
+          <ul className="log">
+            {errors.map((err, idx) => <li key={idx} className="error">{err}</li>)}
+          </ul>
+          <div className="credits">
+            Model viewer by <a href="https://github.com/flowtsohg/mdx-m3-viewer" target="_blank">flowtsohg@github</a>
+          </div>
         </div>
       </div>
     );

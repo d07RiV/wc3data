@@ -131,7 +131,7 @@ bool huff_compress(void* in, size_t in_size, void* out, size_t* out_size) {
 }
 
 bool huff_decompress(void* in, size_t in_size, void* out, size_t* out_size) {
-  THuffmannTree ht(true);
+  THuffmannTree ht(false);
   TInputStream is(in, in_size);
   *out_size = ht.Decompress(out, *out_size, &is);
   return true;

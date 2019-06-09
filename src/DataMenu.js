@@ -30,7 +30,7 @@ const DataMenu = () => (
         <LinkContainer to={`/${data.id}/files`}>
           <NavItem eventKey="files">Files</NavItem>
         </LinkContainer>
-        <ObjectMenu/>
+        {(!data.isMap || data.hasFile("objects.json")) && <ObjectMenu/>}
         {(!!data.isMap) && (
           <LinkContainer to={`/${data.id}/map`}>
             <NavItem eventKey="map">Map</NavItem>

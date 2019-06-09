@@ -167,10 +167,12 @@ bool ObjectData::readOBJ(File file, MetaData* meta, bool ext, WTSData* wts) {
         }
         uint32 suf = file.read32(true);
         if (suf != 0 && suf != newid && suf != oldid) {
-          return false;
+          //return false;
         }
       }
-      unit->compress();
+      if (unit) {
+        unit->compress();
+      }
     }
   }
   return true;

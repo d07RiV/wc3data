@@ -1,8 +1,31 @@
+.ModelPage {
+  flex: 1;
+  position: relative;
+}
 .HomePage {
   flex: 1;
   padding: 20px;
   overflow: auto;
   margin-bottom: 0;
+  .map-list {
+    h3, h4 {
+      margin: 0.25em 0;
+      cursor: pointer;
+      span {
+        font-size: 80%;
+      }
+    }
+    .desc {
+      color: #888;
+    }
+    ul {
+      margin-left: 1em;
+      list-style-type: none;
+    }
+    &.collapsed ul {
+      display: none;
+    }
+  }
   ul {
     margin-left: 2em;
     list-style-type: disc;

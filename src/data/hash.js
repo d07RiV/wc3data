@@ -31,6 +31,10 @@ export function pathHashTyped(name, hashType = 1) {
 }
 
 export default function pathHash(name) {
+  let m = name.match(/^(.*)\.(?:blp|dds|gif|jpg|jpeg|png|tga)$/i);
+  if (m) {
+    name = m[1];
+  }
   const u32 = new Uint32Array(2);
   u32[0] = pathHashTyped(name, 1);
   u32[1] = pathHashTyped(name, 2);

@@ -38,6 +38,9 @@ namespace ImagePrivate {
     if (!hdr.width || !hdr.height) {
       return false;
     }
+    if (hdr.width > 32768 || hdr.height > 32768 || hdr.width * hdr.height > 8192 * 8192) {
+      return false;
+    }
 
     image = Image(hdr.width, hdr.height);
     Image::color_t* bits = image.mutable_bits();

@@ -1,5 +1,4 @@
 import BinaryStream from '../../common/binarystream';
-import MpqArchive from '../mpq/archive';
 import War3MapDoo from './doo/file';
 import War3MapImp from './imp/file';
 // import War3MapMmp from './mmp/file';
@@ -35,36 +34,13 @@ export default class War3Map {
     this.flags = 0;
     /** @member {number} */
     this.maxPlayers = 0;
-    /** @member {MpqArchive} */
-    this.archive = new MpqArchive(null, readonly);
     /** @member {War3MapImp} */
     this.imports = new War3MapImp();
     /** @member {boolean} */
     this.readonly = !!readonly;
 
     if (buffer) {
-      if (buffer.isMap) {
-        this.name = buffer.name;
-        this.archive = {
-          getFileNames() {
-            return buffer.listFile().split("\n").filter(n => n.length > 0);
-          },
-          get(name) {
-            const data = buffer.binary(name);
-            if (!data) {
-              return data;
-            }
-            return {
-              name,
-              arrayBuffer() {
-                return data.data.buffer;
-              }
-            };
-          },
-        };
-      } else {
-        this.load(buffer);
-      }
+      this.load(buffer);
     }
   }
 
@@ -76,27 +52,24 @@ export default class War3Map {
    * @return {boolean}
    */
   load(buffer) {
-    let stream = new BinaryStream(buffer);
-
-    if (stream.read(4) !== 'HM3W') {
-      return false;
-    }
-
-    // Read the header.
-    this.u1 = stream.readUint32();
-    this.name = stream.readUntilNull();
-    this.flags = stream.readUint32();
-    this.maxPlayers = stream.readUint32();
-
-    // Read the archive.
-    // If it failed to be read, abort.
-    if (!this.archive.load(buffer)) {
-      return false;
-    }
-
-    // Read in the imports file if there is one.
-    this.readImports();
-
+    this.name = buffer.name;
+    this.archive = {
+      getFileNames() {
+        return buffer.listFile().split("\n").filter(n => n.length > 0);
+      },
+      get(name) {
+        const data = buffer.binary(name);
+        if (!data) {
+          return data;
+        }
+        return {
+          name,
+          arrayBuffer() {
+            return data.data.buffer;
+          }
+        };
+      },
+    };
     return true;
   }
 

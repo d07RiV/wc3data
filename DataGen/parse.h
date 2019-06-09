@@ -4,6 +4,7 @@
 #include "rmpq/archive.h"
 #include "datafile/game.h"
 #include "hash.h"
+#include "utils/json.h"
 #include <memory>
 #include <functional>
 
@@ -18,8 +19,11 @@ class MapParser {
 public:
   MapParser(File data, File map);
 
+  bool hasCustomObjects();
   MemoryFile processObjects();
   MemoryFile processAll();
+
+  json::Value info;
 
   std::function<void(unsigned int)> onProgress;
 

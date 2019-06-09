@@ -6,7 +6,6 @@ import War3MapW3i from '../../../parsers/w3x/w3i/file';
 import War3MapW3e from '../../../parsers/w3x/w3e/file';
 import War3MapDoo from '../../../parsers/w3x/doo/file';
 import War3MapUnitsDoo from '../../../parsers/w3x/unitsdoo/file';
-import MpqArchive from '../../../parsers/mpq/archive';
 import MappedData from '../../../utils/mappeddata';
 import ModelViewer from '../../viewer';
 import geoHandler from '../geo/handler';
@@ -370,19 +369,20 @@ export default class War3MapViewer extends ModelViewer {
 
     let w3i = new War3MapW3i(this.mapMpq.get('war3map.w3i').arrayBuffer());
     this.tileset = w3i.tileset;
+    this.editorVersion = w3i.editorVersion;
 
     this.emit('maploaded');
 
     this.mapPathSolver = (path) => {
       // MPQ paths have backwards slashes...always? Don't know.
-      let mpqPath = path.replace(/\//g, '\\');
+      //let mpqPath = path.replace(/\//g, '\\');
 
       // If the file is in the map, return it.
       // Otherwise, if it's in the tileset MPQ, return it from there.
-      let file = this.mapMpq.get(mpqPath);
-      if (file) {
-        return [file.arrayBuffer(), path.substr(path.lastIndexOf('.')), false];
-      }
+      //let file = this.mapMpq.get(mpqPath);
+      //if (file) {
+      //  return [file.arrayBuffer(), path.substr(path.lastIndexOf('.')), false];
+      //}
 
       // Try to get the file from the game MPQs.
       return wc3PathSolver(path, this.tileset);
@@ -463,14 +463,27 @@ export default class War3MapViewer extends ModelViewer {
         model = this.load(fileVar);
       }
 
-      let instance = model.addInstance();
 
-      instance.move(doodad.location);
-      instance.rotateLocal(quat.setAxisAngle(quat.create(), VEC3_UNIT_Z, doodad.angle));
-      instance.scale(doodad.scale);
-      instance.setScene(scene);
+      if (row.texFile) {
+        model.whenLoaded().then(() => {
+          let instance = model.addInstance();
+          const repl = model.replaceables.indexOf(row.texID);
+          if (repl >= 0) {
+            let tex = row.texFile;
+            if (tex.lastIndexOf('.') <= Math.max(tex.lastIndexOf('/'), tex.lastIndexOf('\\'))) {
+              tex += '.blp';
+            }
+            instance.setTexture(model.textures[repl], this.load(tex));
+          }
+          instance.move(doodad.location);
+          instance.rotateLocal(quat.setAxisAngle(quat.create(), VEC3_UNIT_Z, doodad.angle));
+          instance.scale(doodad.scale);
+          instance.setScene(scene);
+    
+          standOnRepeat(instance);
+        });
+      }
 
-      standOnRepeat(instance);
     }
 
     this.doodadsReady = true;
@@ -497,6 +510,12 @@ export default class War3MapViewer extends ModelViewer {
       let path;
 
       // Hardcoded?
+      let scale = unit.scale;
+      let teamColor = unit.player;
+      // fix team colors for older versions
+      if (this.editorVersion < 0x17A8 && teamColor >= 12) {
+        teamColor += 12;
+      }
       if (unit.id === 'sloc') {
         path = 'Objects\\StartLocation\\StartLocation.mdx';
       } else {
@@ -506,6 +525,13 @@ export default class War3MapViewer extends ModelViewer {
 
         if (path.endsWith('.mdl')) {
           path = path.slice(0, -4);
+        }
+
+        scale = vec3.clone(unit.scale);
+        vec3.scale(scale, scale, row.modelScale);
+
+        if (row.teamColor >= 0) {
+          teamColor = row.teamColor;
         }
 
         path += '.mdx';
@@ -519,8 +545,8 @@ export default class War3MapViewer extends ModelViewer {
 
         instance.move(unit.location);
         instance.rotateLocal(quat.setAxisAngle(quat.create(), VEC3_UNIT_Z, unit.angle));
-        instance.scale(unit.scale);
-        instance.setTeamColor(unit.player);
+        instance.scale(scale);
+        instance.setTeamColor(teamColor);
         instance.setScene(scene);
 
         standOnRepeat(instance);
@@ -619,13 +645,15 @@ export default class War3MapViewer extends ModelViewer {
     this.columns = columns - 1;
     this.rows = rows - 1;
 
+    this.calculateRamps();
+
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < columns; x++) {
         let bottomLeft = corners[y][x];
         let index = y * columns + x;
 
         cliffHeights[index] = bottomLeft.groundHeight;
-        cornerHeights[index] = bottomLeft.groundHeight + bottomLeft.layerHeight - 2;
+        cornerHeights[index] = bottomLeft.groundHeight + bottomLeft.layerHeight + (bottomLeft.rampAdjust || 0) - 2;
         waterHeights[index] = bottomLeft.waterHeight;
 
         if (y < rows - 1 && x < columns - 1) {
@@ -633,7 +661,9 @@ export default class War3MapViewer extends ModelViewer {
           waterFlags[instance] = this.isWater(x, y);
 
           // Is this a cliff, or a normal corner?
-          if (this.isCliff(x, y)) {
+          if (bottomLeft.rampType) {
+
+          } else if (this.isCliff(x, y)) {
             let bottomLeftLayer = bottomLeft.layerHeight;
             let bottomRightLayer = corners[y][x + 1].layerHeight;
             let topLeftLayer = corners[y + 1][x].layerHeight;
@@ -657,7 +687,7 @@ export default class War3MapViewer extends ModelViewer {
                 cliffs[path] = {locations: [], textures: []};
               }
 
-              cliffs[path].locations.push((x + 1) * 128 + centerOffset[0], y * 128 + centerOffset[1], (base - 2) * 128);
+              cliffs[path].locations.push(x * 128 + centerOffset[0], y * 128 + centerOffset[1], (base - 2) * 128);
               cliffs[path].textures.push(cliffTexture);
             }
           } else {
@@ -788,6 +818,107 @@ export default class War3MapViewer extends ModelViewer {
     this.cliffsReady = true;
   }
 
+  calculateRamps() {
+    let corners = this.corners;
+    let [columns, rows] = this.mapSize;
+
+    // There are no C or X ramps because they're not supported in city tileset
+    let ramps = [
+      "AAHL",
+      "AALH",
+      "ABHL",
+      "AHLA",
+      "ALHA",
+      "ALHB",
+      "BALH",
+      "BHLA",
+      "HAAL",
+      "HBAL",
+      "HLAA",
+      "HLAB",
+      "LAAH",
+      "LABH",
+      "LHAA",
+      "LHBA",
+    ];
+
+    let n = [];
+    for (let y = 1; y < rows - 1; ++y) {
+      for (let x = 1; x < columns - 1; ++x) {
+        let o = corners[y][x];
+        if (!o.ramp) continue;
+        let a = corners[y - 1][x - 1];
+        let b = corners[y][x - 1];
+        let c = corners[y + 1][x - 1];
+        let d = corners[y + 1][x];
+        let e = corners[y + 1][x + 1];
+        let f = corners[y][x + 1];
+        let g = corners[y - 1][x + 1];
+        let h = corners[y - 1][x];
+        let base = o.layerHeight;
+        if ((b.ramp && f.ramp) || (d.ramp && h.ramp)) {
+          let adjust = 0;
+          if (b.ramp && f.ramp) {
+            adjust = Math.max(adjust, (b.layerHeight + f.layerHeight) / 2 - base);
+          }
+          if (d.ramp && h.ramp) {
+            adjust = Math.max(adjust, (d.layerHeight + h.layerHeight) / 2 - base);
+          }
+          if (a.ramp && e.ramp) {
+            adjust = Math.max(adjust, ((a.layerHeight + e.layerHeight) / 2 - base) / 2);
+          }
+          if (c.ramp && g.ramp) {
+            adjust = Math.max(adjust, ((c.layerHeight + g.layerHeight) / 2 - base) / 2);
+          }
+          o.rampAdjust = adjust;
+        }
+      }
+    }
+
+    for (let y = 0; y < rows - 1; ++y) {
+      for (let x = 0; x < columns - 1; ++x) {
+        let a = corners[y][x];
+        let b = corners[y + 1][x];
+        let c = corners[y][x + 1];
+        let d = corners[y + 1][x + 1];
+        if (!a.rampType && y < rows - 2) {
+          let e = corners[y + 2][x];
+          let f = corners[y + 2][x + 1];
+          let ae = Math.min(a.layerHeight, e.layerHeight), cf = Math.min(c.layerHeight, f.layerHeight);
+          if (b.layerHeight === ae && d.layerHeight === cf) {
+            let base = Math.min(ae, cf);
+            if (a.ramp === b.ramp && a.ramp === e.ramp && c.ramp === d.ramp && c.ramp === f.ramp && a.ramp !== c.ramp) {
+              let name = this.rampFileName0(a.layerHeight, e.layerHeight, f.layerHeight, c.layerHeight, base);
+              if (ramps.includes(name)) {
+                a.rampName = name;
+                a.rampType = 1;
+                b.rampType = -1;
+                a.romp = b.romp = c.romp = d.romp = e.romp = f.romp = 1;
+              }
+            }
+          }
+        }
+        if (!a.rampType && x < columns - 2) {
+          let e = corners[y][x + 2];
+          let f = corners[y + 1][x + 2];
+          let ae = Math.min(a.layerHeight, e.layerHeight), bf = Math.min(b.layerHeight, f.layerHeight);
+          if (c.layerHeight === ae && d.layerHeight === bf) {
+            let base = Math.min(ae, bf);
+            if (a.ramp === c.ramp && a.ramp === e.ramp && b.ramp === d.ramp && b.ramp === f.ramp && a.ramp !== b.ramp) {
+              let name = this.rampFileName0(b.layerHeight, f.layerHeight, e.layerHeight, a.layerHeight, base);
+              if (ramps.includes(name)) {
+                a.rampName = name;
+                a.rampType = 2;
+                c.rampType = -1;
+                a.romp = b.romp = c.romp = d.romp = e.romp = f.romp = 1;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   /**
    * @param {number} bottomLeftLayer
    * @param {number} bottomRightLayer
@@ -797,10 +928,25 @@ export default class War3MapViewer extends ModelViewer {
    * @return {string}
    */
   cliffFileName(bottomLeftLayer, bottomRightLayer, topLeftLayer, topRightLayer, base) {
-    return String.fromCharCode(65 + bottomLeftLayer - base) +
-      String.fromCharCode(65 + topLeftLayer - base) +
+    return String.fromCharCode(65 + topLeftLayer - base) +
       String.fromCharCode(65 + topRightLayer - base) +
-      String.fromCharCode(65 + bottomRightLayer - base);
+      String.fromCharCode(65 + bottomRightLayer - base) +
+      String.fromCharCode(65 + bottomLeftLayer - base);
+  }
+
+  rampFileName0(a, b, c, d, base) {
+    let left = "LHX", right = "ABC";
+    if (a - base > 2 || b - base > 2 || c - base > 2 || d - base > 2) {
+      return "";
+    }
+    return left[a - base] + left[b - base] + right[c - base] + right[d - base];
+  }
+  rampFileName1(a, b, c, d, base) {
+    let left = "ABC", right = "LHX";
+    if (a - base > 2 || b - base > 2 || c - base > 2 || d - base > 2) {
+      return "";
+    }
+    return left[a - base] + left[b - base] + right[c - base] + right[d - base];
   }
 
   /**
@@ -908,12 +1054,14 @@ export default class War3MapViewer extends ModelViewer {
     }
 
     let corners = this.corners;
-    let bottomLeft = corners[row][column].layerHeight;
-    let bottomRight = corners[row][column + 1].layerHeight;
-    let topLeft = corners[row + 1][column].layerHeight;
-    let topRight = corners[row + 1][column + 1].layerHeight;
+    let bl = corners[row][column], tl = corners[row + 1][column],
+        br = corners[row][column + 1], tr = corners[row + 1][column + 1];
+    if (bl.rampAdjust || tl.rampAdjust || br.rampAdjust || tr.rampAdjust) {
+      return false;
+    }
+    let blH = bl.layerHeight;
 
-    return bottomLeft !== bottomRight || bottomLeft !== topLeft || bottomLeft !== topRight;
+    return blH !== br.layerHeight || blH !== tl.layerHeight || blH !== tr.layerHeight;
   }
 
   /**
@@ -1018,7 +1166,7 @@ export default class War3MapViewer extends ModelViewer {
 
       // If this is a custom object, and it's not in the mapped data, copy the standard object.
       if (modificationObject.newId !== '' && !dataMap.getRow(newId)) {
-        dataMap.setRow(modificationObject.newId, {...row});
+        dataMap.setRow(modificationObject.newId, row = {...row});
       }
 
       for (let modification of modificationObject.modifications) {
@@ -1076,35 +1224,32 @@ export default class War3MapViewer extends ModelViewer {
 
     return out;
   }
-}
 
-/*
-  heightAt(location) {
-    let heightMap = this.heightMap,
-      offset = this.offset,
-      x = (location[0] / 128) + offset[0],
-      y = (location[1] / 128) + offset[1];
+  heightAt(x, y) {
+    let centerOffset = this.centerOffset;
+    let mapSize = this.mapSize;
 
-    let minY = Math.floor(y),
-      maxY = Math.ceil(y),
-      minX = Math.floor(x),
-      maxX = Math.ceil(x);
+    x = (x - centerOffset[0]) / 128;
+    y = (y - centerOffset[1]) / 128;
 
-    // See if this coordinate is in the map
-    if (maxY > 0 && minY < heightMap.length - 1 && maxX > 0 && minX < heightMap[0].length - 1) {
-      // See http://gamedev.stackexchange.com/a/24574
-      let triZ0 = heightMap[minY][minX],
-        triZ1 = heightMap[minY][maxX],
-        triZ2 = heightMap[maxY][minX],
-        triZ3 = heightMap[maxY][maxX],
-        sqX = x - minX,
-        sqZ = y - minY,
-        height;
+    let cellX = x | 0;
+    let cellY = y | 0;
 
-      if ((sqX + sqZ) < 1) {
-        height = triZ0 + (triZ1 - triZ0) * sqX + (triZ2 - triZ0) * sqZ;
+    if (cellX >= 0 && cellX < mapSize[0] - 1 && cellY >= 0 && cellY < mapSize[1] - 1) {
+      let corners = this.corners;
+      const ht = c => c.groundHeight + c.layerHeight - 2;
+      let bottomLeft = ht(corners[cellY][cellX]);
+      let bottomRight = ht(corners[cellY][cellX + 1]);
+      let topLeft = ht(corners[cellY + 1][cellX]);
+      let topRight = ht(corners[cellY + 1][cellX + 1]);
+      let sqX = x - cellX;
+      let sqY = y - cellY;
+      let height;
+
+      if (sqX + sqY < 1) {
+        height = bottomLeft + (bottomRight - bottomLeft) * sqX + (topLeft - bottomLeft) * sqY;
       } else {
-        height = triZ3 + (triZ1 - triZ3) * (1 - sqZ) + (triZ2 - triZ3) * (1 - sqX);
+        height = topRight + (bottomRight - topRight) * (1 - sqY) + (topLeft - topRight) * (1 - sqX);
       }
 
       return height * 128;
@@ -1112,4 +1257,7 @@ export default class War3MapViewer extends ModelViewer {
 
     return 0;
   }
+}
+
+/*
   */
