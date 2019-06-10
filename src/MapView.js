@@ -137,7 +137,7 @@ export default class MapHome extends React.Component {
       }
     };
 
-    this.viewer = new ModelViewer.viewer.handlers.w3x.MapViewer(canvas, resolvePath);
+    this.viewer = new ModelViewer.viewer.handlers.w3x.MapViewer(canvas, resolvePath, data);
     this.viewer.gl.clearColor(0.3, 0.3, 0.3, 1);
     this.viewer.on('error', (target, error, reason) => {
       if (error === "FailedToFetch") {

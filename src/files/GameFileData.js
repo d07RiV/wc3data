@@ -3,7 +3,9 @@ import classNames from 'classnames';
 import pathHash, { makeUid, parseUid, equalUid } from 'data/hash';
 import { Glyphicon } from 'react-bootstrap';
 import { downloadBlob, withAsync } from 'utils';
+import SlkFile from 'mdx/parsers/slk/file';
 
+import FileSlkView from './FileSlk';
 import FileHexView from './FileHex';
 import FileTextView from './FileText';
 import FileImageView from './FileImage';
@@ -32,10 +34,11 @@ class GameFileInner extends React.Component {
       this.model = true;
       state.panel = "model";
     } else if (ext === ".txt" || ext === ".slk") {
-      const text = new TextDecoder().decode(data).split(/\r\n?|\n/);
+      const text = new TextDecoder().decode(data);
+      const lines = text.split(/\r\n?|\n/);
       this.text = [];
       const maxLength = 2048;
-      text.forEach(line => {
+      lines.forEach(line => {
         if (line.length > maxLength) {
           for (let i = 0; i < line.length; i += maxLength) {
             this.text.push(line.substr(i, maxLength));
@@ -46,6 +49,13 @@ class GameFileInner extends React.Component {
       });
       this.textHeights = this.text.map(() => 16);
       state.panel = "text";
+      if (ext === ".slk") {
+        try {
+          this.slk = new SlkFile(text);
+          state.panel = "slk";
+        } catch (e) {
+        }
+      }
     }
     this.state = state;
   }
@@ -62,6 +72,7 @@ class GameFileInner extends React.Component {
     case "hex": return <FileHexView data={this.props.data}/>;
     case "text": return <FileTextView lines={this.text} heights={this.textHeights}/>;
     case "model": return <FileModelView id={this.props.id}/>;
+    case "slk": return <FileSlkView data={this.slk}/>;
     default: return null;
     }
   }
@@ -78,6 +89,7 @@ class GameFileInner extends React.Component {
           <li key="dl" className="tab-xbutton" onClick={this.onDownload}>Download <Glyphicon glyph="download-alt"/></li>
           {this.makePanel("hex", "Hex")}
           {this.text != null && this.makePanel("text", "Text")}
+          {this.slk != null && this.makePanel("slk", "SLK")}
           {!!this.model && this.makePanel("model", "Model")}
         </ul>
         <div className={classNames("tab-pane", this.state.panel)}>

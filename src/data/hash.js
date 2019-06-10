@@ -35,9 +35,21 @@ export default function pathHash(name) {
   if (m) {
     name = m[1];
   }
+  let delta = 0;
+  if (m = name.match(/^([A-Z])\.w3mod:(.*)$/)) {
+    delta = m[1].charCodeAt(0) - 64;
+    name = m[2];
+  }
   const u32 = new Uint32Array(2);
   u32[0] = pathHashTyped(name, 1);
   u32[1] = pathHashTyped(name, 2);
+  if (delta) {
+    let org = u32[0];
+    u32[0] += delta;
+    if (u32[0] < org) {
+      u32[1] += 1;
+    }
+  }
   return u32;
 }
 

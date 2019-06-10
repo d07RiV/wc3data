@@ -221,9 +221,6 @@ export default class ModelInstance extends TexturedModelInstance {
     // this.xYQuad = flags & 0x100000;
     node.name = genericObject.name;
     node.gen = genericObject;
-    if (genericObject.dontInheritRotation || genericObject.dontInheritTranslation) {
-      debugger;
-    }
 
     if (genericObject.parentId === -1) {
       node.parent = this;

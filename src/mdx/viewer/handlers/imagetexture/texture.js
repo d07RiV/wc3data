@@ -18,6 +18,7 @@ export default class ImageTexture extends Texture {
       }
 
       // Upscale to POT if the size is NPOT.
+      this.originalData = src;
       src = scaleNPOT(src);
 
       let id = gl.createTexture();

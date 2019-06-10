@@ -13,6 +13,7 @@ import mdxHandler from '../mdx/handler';
 import shaders from './shaders';
 import getCliffVariation from './variations';
 import TerrainModel from './terrainmodel';
+import SplatModel from './splatmodel';
 // import SimpleModel from './simplemodel';
 import standOnRepeat from './standsequence';
 
@@ -27,7 +28,7 @@ export default class War3MapViewer extends ModelViewer {
    * @param {HTMLCanvasElement} canvas
    * @param {function} wc3PathSolver
    */
-  constructor(canvas, wc3PathSolver) {
+  constructor(canvas, wc3PathSolver, mapData) {
     super(canvas);
 
     this.batchSize = 256;
@@ -44,6 +45,7 @@ export default class War3MapViewer extends ModelViewer {
     this.waterShader = this.loadShader('Water', shaders.vsWater, shaders.fsWater);
     this.cliffShader = this.loadShader('Cliffs', shaders.vsCliffs, shaders.fsCliffs);
     this.simpleModelShader = this.loadShader('SimpleModel', shaders.vsSimpleModel, shaders.fsSimpleModel);
+    this.uberSplatShader = this.loadShader('UberSplats', shaders.vsUberSplat, shaders.fsUberSplat);
 
     this.scene = this.addScene();
     this.camera = this.scene.camera;
@@ -59,8 +61,10 @@ export default class War3MapViewer extends ModelViewer {
     this.waterData = new MappedData();
     this.terrainReady = false;
     this.cliffsReady = false;
+    this.shadowsReady = false;
 
-    this.whenLoaded(['TerrainArt\\Terrain.slk', 'TerrainArt\\CliffTypes.slk', 'TerrainArt\\Water.slk'].map((path) => this.loadGeneric(wc3PathSolver(path)[0], 'text', undefined, path)))
+    this.whenLoaded(['TerrainArt\\Terrain.slk', 'TerrainArt\\CliffTypes.slk', 'TerrainArt\\Water.slk']
+      .map((path) => this.loadGeneric(wc3PathSolver(path)[0], 'text', undefined, path)))
       .then(([terrain, cliffTypes, water]) => {
         this.terrainCliffsAndWaterLoaded = true;
         this.terrainData.load(terrain.data);
@@ -76,32 +80,41 @@ export default class War3MapViewer extends ModelViewer {
     this.doodads = [];
     this.terrainDoodads = [];
     this.doodadsReady = false;
+    this.uberSplats = [];
+    this.uberSplatsReady = false;
 
-    this.whenLoaded(['Doodads\\Doodads.slk', 'Doodads\\DoodadMetaData.slk', 'Units\\DestructableData.slk', 'Units\\DestructableMetaData.slk'].map((path) => this.loadGeneric(wc3PathSolver(path)[0], 'text', undefined, path)))
-      .then(([doodads, doodadMetaData, destructableData, destructableMetaData]) => {
-        this.doodadsAndDestructiblesLoaded = true;
-        this.doodadsData.load(doodads.data);
-        this.doodadMetaData.load(doodadMetaData.data);
-        this.doodadsData.load(destructableData.data);
-        this.destructableMetaData.load(destructableMetaData.data);
-        this.emit('doodadsloaded');
-      });
+    const objects = mapData.objects();
+
+    objects.then(obj => {
+      this.doodadsAndDestructiblesLoaded = true;
+      this.doodadsData = obj.objects;
+      this.emit('doodadsloaded');
+    });
 
     this.unitsAndItemsLoaded = false;
     this.unitsData = new MappedData();
     this.unitMetaData = new MappedData();
+    this.uberSplatData = new MappedData();
     this.units = [];
     this.unitsReady = false;
 
-    this.whenLoaded(['Units\\UnitData.slk', 'Units\\unitUI.slk', 'Units\\ItemData.slk', 'Units\\UnitMetaData.slk'].map((path) => this.loadGeneric(wc3PathSolver(path)[0], 'text', undefined, path)))
-      .then(([unitData, unitUi, itemData, unitMetaData]) => {
+    Promise.all([objects, this.loadGeneric(wc3PathSolver('Splats\\UberSplatData.slk')[0], 'text', undefined, 'Splats\\UberSplatData.slk').whenLoaded()])
+      .then(([obj, uberSplatData]) => {
         this.unitsAndItemsLoaded = true;
-        this.unitsData.load(unitData.data);
-        this.unitsData.load(unitUi.data);
-        this.unitsData.load(itemData.data);
-        this.unitMetaData.load(unitMetaData.data);
+        this.unitsData = obj.objects;
+        this.uberSplatData.load(uberSplatData.data);
         this.emit('unitsloaded');
       });
+  
+    let gl = this.gl;
+    let shadowMap = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, shadowMap);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.ALPHA, 4, 4, 0, gl.ALPHA, gl.UNSIGNED_BYTE, new Uint8Array(16));
+    this.shadowMap = shadowMap;
   }
 
   /**
@@ -115,7 +128,8 @@ export default class War3MapViewer extends ModelViewer {
       let shader = this.groundShader;
       let uniforms = shader.uniforms;
       let attribs = shader.attribs;
-      let {columns, rows, centerOffset, vertexBuffer, faceBuffer, heightMap, instanceBuffer, instanceCount, textureBuffer, variationBuffer} = this.terrainRenderData;
+      let {columns, rows, centerOffset, vertexBuffer, faceBuffer, heightMap, cliffHeightMap, instanceBuffer,
+        instanceCount, textureBuffer, variationBuffer, heightMapSize} = this.terrainRenderData;
       let tilesetTextures = this.tilesetTextures;
       let instanceAttrib = attribs.a_InstanceID;
       let positionAttrib = attribs.a_position;
@@ -129,8 +143,11 @@ export default class War3MapViewer extends ModelViewer {
       gl.uniformMatrix4fv(uniforms.u_mvp, false, this.camera.worldProjectionMatrix);
       gl.uniform2fv(uniforms.u_offset, centerOffset);
       gl.uniform2f(uniforms.u_size, columns - 1, rows - 1);
+      gl.uniform2fv(uniforms.u_pixel, heightMapSize);
       gl.uniform1i(uniforms.u_heightMap, 0);
       gl.uniform1i(uniforms.u_tilesets, 1);
+      gl.uniform1i(uniforms.u_shadowMap, 2);
+      gl.uniform1i(uniforms.u_heightMap0, 3);
       gl.uniform1f(uniforms.u_tilesetHeight, 1 / (tilesetTextures.length + 1));
       gl.uniform1f(uniforms.u_tilesetCount, tilesetTextures.length + 1);
 
@@ -139,6 +156,12 @@ export default class War3MapViewer extends ModelViewer {
 
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, this.tilesetsTexture);
+
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, this.shadowMap);
+
+      gl.activeTexture(gl.TEXTURE3);
+      gl.bindTexture(gl.TEXTURE_2D, cliffHeightMap);
 
       gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
       gl.vertexAttribPointer(positionAttrib, 2, gl.FLOAT, false, 8, 0);
@@ -176,7 +199,7 @@ export default class War3MapViewer extends ModelViewer {
       let shader = this.waterShader;
       let uniforms = shader.uniforms;
       let attribs = shader.attribs;
-      let {columns, rows, centerOffset, vertexBuffer, faceBuffer, heightMap, instanceBuffer, instanceCount, waterHeightMap, waterBuffer} = this.terrainRenderData;
+      let {columns, rows, centerOffset, vertexBuffer, faceBuffer, heightMap, instanceBuffer, instanceCount, waterHeightMap, waterBuffer, heightMapSize} = this.terrainRenderData;
       let instanceAttrib = attribs.a_InstanceID;
       let positionAttrib = attribs.a_position;
       let isWaterAttrib = attribs.a_isWater;
@@ -189,6 +212,7 @@ export default class War3MapViewer extends ModelViewer {
       gl.uniformMatrix4fv(uniforms.u_mvp, false, this.camera.worldProjectionMatrix);
       gl.uniform2fv(uniforms.u_offset, centerOffset);
       gl.uniform2f(uniforms.u_size, columns - 1, rows - 1);
+      gl.uniform2fv(uniforms.u_pixel, heightMapSize);
       gl.uniform1i(uniforms.u_heightMap, 0);
       gl.uniform1i(uniforms.u_waterHeightMap, 1);
       gl.uniform1i(uniforms.u_waterMap, 2);
@@ -238,7 +262,7 @@ export default class War3MapViewer extends ModelViewer {
       let shader = this.cliffShader;
       let attribs = shader.attribs;
       let uniforms = shader.uniforms;
-      let {centerOffset, cliffHeightMap, heightMapSize} = this.terrainRenderData;
+      let {columns, rows, centerOffset, cliffHeightMap, heightMapSize} = this.terrainRenderData;
 
       gl.disable(gl.BLEND);
 
@@ -246,10 +270,12 @@ export default class War3MapViewer extends ModelViewer {
 
       gl.uniformMatrix4fv(uniforms.u_mvp, false, this.camera.worldProjectionMatrix);
       gl.uniform1i(uniforms.u_heightMap, 0);
+      gl.uniform2f(uniforms.u_size, columns - 1, rows - 1);
       gl.uniform2fv(uniforms.u_pixel, heightMapSize);
       gl.uniform2fv(uniforms.u_centerOffset, centerOffset);
       gl.uniform1i(uniforms.u_texture1, 1);
       gl.uniform1i(uniforms.u_texture2, 2);
+      gl.uniform1i(uniforms.u_shadowMap, 3);
 
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, cliffHeightMap);
@@ -261,6 +287,9 @@ export default class War3MapViewer extends ModelViewer {
         gl.activeTexture(gl.TEXTURE2);
         gl.bindTexture(gl.TEXTURE_2D, this.cliffTextures[1].webglResource);
       }
+
+      gl.activeTexture(gl.TEXTURE3);
+      gl.bindTexture(gl.TEXTURE_2D, this.shadowMap);
 
       // Set instanced attributes.
       instancedArrays.vertexAttribDivisorANGLE(attribs.a_instancePosition, 1);
@@ -274,6 +303,43 @@ export default class War3MapViewer extends ModelViewer {
       // Clear instanced attributes.
       instancedArrays.vertexAttribDivisorANGLE(attribs.a_instancePosition, 0);
       instancedArrays.vertexAttribDivisorANGLE(attribs.a_instanceTexture, 0);
+    }
+  }
+
+  /**
+   *
+   */
+  renderUberSplats() {
+    if (this.terrainReady && this.uberSplatsReady) {
+      let gl = this.gl;
+      let webgl = this.webgl;
+      let shader = this.uberSplatShader;
+      let attribs = shader.attribs;
+      let uniforms = shader.uniforms;
+      let {columns, rows, centerOffset, heightMap, heightMapSize} = this.terrainRenderData;
+
+      gl.enable(gl.BLEND);
+
+      webgl.useShaderProgram(shader);
+
+      gl.uniformMatrix4fv(uniforms.u_mvp, false, this.camera.worldProjectionMatrix);
+      gl.uniform1i(uniforms.u_heightMap, 0);
+      gl.uniform2f(uniforms.u_size, columns - 1, rows - 1);
+      gl.uniform2fv(uniforms.u_pixel, heightMapSize);
+      gl.uniform2fv(uniforms.u_centerOffset, centerOffset);
+      gl.uniform1i(uniforms.u_texture, 1);
+      gl.uniform1i(uniforms.u_shadowMap, 2);
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, heightMap);
+
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, this.shadowMap);
+
+      // Render the cliffs.
+      for (let splat of this.uberSplatModels) {
+        splat.render(gl, attribs);
+      }
     }
   }
 
@@ -334,12 +400,13 @@ export default class War3MapViewer extends ModelViewer {
       this.gl.viewport(...this.camera.rect);
 
       this.renderGround();
+      this.renderUberSplats();
       this.renderCliffs();
       // this.renderDoodads(true);
       super.renderOpaque();
       // this.renderDoodads(false);
-      super.renderTranslucent();
       this.renderWater();
+      super.renderTranslucent();
     }
   }
 
@@ -348,10 +415,11 @@ export default class War3MapViewer extends ModelViewer {
    */
   update() {
     if (this.anyReady) {
-      this.waterIndex += this.waterIncreasePerFrame;
-
-      if (this.waterIndex >= this.waterTextures.length) {
-        this.waterIndex = 0;
+      if (this.waterTextures) {
+        this.waterIndex += this.waterIncreasePerFrame;
+        if (this.waterIndex >= this.waterTextures.length) {
+          this.waterIndex = 0;
+        }
       }
 
       super.update();
@@ -394,6 +462,8 @@ export default class War3MapViewer extends ModelViewer {
     this.centerOffset = w3e.centerOffset;
     this.mapSize = w3e.mapSize;
 
+    this.calculateRamps();
+
     this.emit('tilesetloaded');
 
     if (this.terrainCliffsAndWaterLoaded) {
@@ -402,28 +472,45 @@ export default class War3MapViewer extends ModelViewer {
       this.once('terrainloaded', () => this.loadTerrainCliffsAndWater(w3e));
     }
 
-    let modifications = this.mapMpq.readModifications();
+    let doodadsLoaded, unitsLoaded;
+
+    this.shadows = [];
+    this.shadowTextures = {};
 
     if (this.doodadsAndDestructiblesLoaded) {
-      this.loadDoodadsAndDestructibles(modifications);
+      this.loadDoodadsAndDestructibles();
+      doodadsLoaded = Promise.resolve();
     } else {
-      this.once('doodadsloaded', () => this.loadDoodadsAndDestructibles(modifications));
+      doodadsLoaded = new Promise((resolve, reject) => {
+        this.once('doodadsloaded', () => {
+          this.loadDoodadsAndDestructibles()
+          resolve();
+        });
+      });
     }
 
     if (this.unitsAndItemsLoaded) {
-      this.loadUnitsAndItems(modifications);
+      this.loadUnitsAndItems();
+      unitsLoaded = Promise.resolve();
     } else {
-      this.once('unitsloaded', () => this.loadUnitsAndItems(modifications));
+      unitsLoaded = new Promise((resolve, reject) => {
+        this.once('unitsloaded', () => {
+          this.loadUnitsAndItems();
+          resolve();
+        });
+      });
     }
+
+    Promise.all([doodadsLoaded, unitsLoaded]).then(() => {
+      this.initShadows();
+    });
   }
 
   /**
    * 
    * @param {*} modifications 
    */
-  loadDoodadsAndDestructibles(modifications) {
-    this.applyModificationFile(this.doodadsData, this.doodadMetaData, modifications.w3d);
-    this.applyModificationFile(this.doodadsData, this.destructableMetaData, modifications.w3b);
+  loadDoodadsAndDestructibles() {
 
     const source = this.mapMpq.get('war3map.doo');
     if (!source) {
@@ -434,9 +521,12 @@ export default class War3MapViewer extends ModelViewer {
 
     // Collect the doodad and destructible data.
     for (let doodad of doo.doodads) {
-      let row = this.doodadsData.getRow(doodad.id);
+      let row = this.doodadsData.find(row => row.id === doodad.id);
+      if (!row) continue;
+      let type = row.type;
+      row = row.data;
       let file = row.file;
-      let numVar = row.numVar;
+      let numVar = parseInt(row.numvar || "0");
 
       if (file.endsWith('.mdl')) {
         file = file.slice(0, -4);
@@ -447,42 +537,48 @@ export default class War3MapViewer extends ModelViewer {
       file += '.mdx';
 
       if (numVar > 1) {
-        fileVar += Math.max(doodad.variation, numVar - 1);
+        fileVar += Math.min(doodad.variation, numVar - 1);
       }
 
       fileVar += '.mdx';
+
+      if (type === 'destructible' && row.shadow && row.shadow !== "_") {
+        this.addShadow(row.shadow, doodad.location[0], doodad.location[1]);
+      }
 
       // First see if the model is local.
       // Doodads refering to local models may have invalid variations, so if the variation doesn't exist, try without a variation.
       let mpqFile = this.mapMpq.get(fileVar) || this.mapMpq.get(file);
       let model;
 
+      if (doodad.id === 'LTlt') {
+        debugger;
+      }
       if (mpqFile) {
         model = this.load(mpqFile.name);
       } else {
         model = this.load(fileVar);
       }
 
-
-      if (row.texFile) {
-        model.whenLoaded().then(() => {
-          let instance = model.addInstance();
-          const repl = model.replaceables.indexOf(row.texID);
+      model.whenLoaded().then(() => {
+        let instance = model.addInstance();
+        if (row.texfile) {
+          const repl = model.replaceables.indexOf(parseInt(row.texid || "0"));
           if (repl >= 0) {
-            let tex = row.texFile;
+            let tex = row.texfile;
             if (tex.lastIndexOf('.') <= Math.max(tex.lastIndexOf('/'), tex.lastIndexOf('\\'))) {
               tex += '.blp';
             }
             instance.setTexture(model.textures[repl], this.load(tex));
           }
-          instance.move(doodad.location);
-          instance.rotateLocal(quat.setAxisAngle(quat.create(), VEC3_UNIT_Z, doodad.angle));
-          instance.scale(doodad.scale);
-          instance.setScene(scene);
-    
-          standOnRepeat(instance);
-        });
-      }
+        }
+        instance.move(doodad.location);
+        instance.rotateLocal(quat.setAxisAngle(quat.create(), VEC3_UNIT_Z, doodad.angle));
+        instance.scale(doodad.scale);
+        instance.setScene(scene);
+  
+        standOnRepeat(instance);
+      });
 
     }
 
@@ -495,23 +591,23 @@ export default class War3MapViewer extends ModelViewer {
    * @param {*} modifications 
    */
   loadUnitsAndItems(modifications) {
-    this.applyModificationFile(this.unitsData, this.unitMetaData, modifications.w3u);
-    this.applyModificationFile(this.unitsData, this.unitMetaData, modifications.w3t);
-
     const source = this.mapMpq.get('war3mapUnits.doo');
     if (!source) {
       return;
     }
     let unitsDoo = new War3MapUnitsDoo(source.arrayBuffer());
     let scene = this.scene;
+    let splats = {};
 
     // Collect the units and items data.
     for (let unit of unitsDoo.units) {
       let path;
 
       // Hardcoded?
+      let location = unit.location;
       let scale = unit.scale;
       let teamColor = unit.player;
+      let animProps = "";
       // fix team colors for older versions
       if (this.editorVersion < 0x17A8 && teamColor >= 12) {
         teamColor += 12;
@@ -519,7 +615,9 @@ export default class War3MapViewer extends ModelViewer {
       if (unit.id === 'sloc') {
         path = 'Objects\\StartLocation\\StartLocation.mdx';
       } else {
-        let row = this.unitsData.getRow(unit.id);
+        let row = this.unitsData.find(row => row.id === unit.id);
+        if (!row) continue;
+        row = row.data;
 
         path = row.file;
 
@@ -528,13 +626,49 @@ export default class War3MapViewer extends ModelViewer {
         }
 
         scale = vec3.clone(unit.scale);
-        vec3.scale(scale, scale, row.modelScale);
+        vec3.scale(scale, scale, row.modelscale);
 
-        if (row.teamColor >= 0) {
-          teamColor = row.teamColor;
+        let rowTeamColor = row.teamcolor && parseInt(row.teamcolor);
+        if (row.teamcolor && rowTeamColor >= 0) {
+          teamColor = rowTeamColor;
+        }
+
+        let rowMoveHeight = row.moveheight && parseFloat(row.moveheight);
+        if (rowMoveHeight) {
+          location = vec3.clone(unit.location);
+          location[2] += rowMoveHeight;
         }
 
         path += '.mdx';
+
+        let splat = row.ubersplat && this.uberSplatData.getRow(row.ubersplat);
+        if (splat) {
+          let texture = `${splat.Dir}\\${splat.file}.blp`;
+          if (!splats[texture]) {
+            splats[texture] = [];
+          }
+          let x = unit.location[0], y = unit.location[1], s = splat.Scale;
+          splats[texture].push(x - s, y - s, x + s, y + s, 1.0);
+        }
+
+        if (row.unitshadow && row.unitshadow !== "_") {
+          let texture = `ReplaceableTextures\\Shadows\\${row.unitshadow}.blp`;
+          let shadowX = parseFloat(row.shadowx || "0");
+          let shadowY = parseFloat(row.shadowy || "0");
+          let shadowW = parseFloat(row.shadoww || "0");
+          let shadowH = parseFloat(row.shadowh || "0");
+          if (!splats[texture]) {
+            splats[texture] = [];
+          }
+          let x = unit.location[0] - shadowX, y = unit.location[1] - shadowY;
+          splats[texture].push(x, y, x + shadowW, y + shadowH, 0.5);
+        }
+
+        if (row.buildingshadow && row.buildingshadow !== "_") {
+          this.addShadow(row.buildingshadow, unit.location[0], unit.location[1]);
+        }
+
+        animProps = row.animprops;
       }
 
       if (path) {
@@ -543,13 +677,13 @@ export default class War3MapViewer extends ModelViewer {
 
         //let normal = this.groundNormal([], unit.location[0], unit.location[1]);
 
-        instance.move(unit.location);
+        instance.move(location);
         instance.rotateLocal(quat.setAxisAngle(quat.create(), VEC3_UNIT_Z, unit.angle));
         instance.scale(scale);
         instance.setTeamColor(teamColor);
         instance.setScene(scene);
 
-        standOnRepeat(instance);
+        standOnRepeat(instance, animProps);
       } else {
         console.log('Unknown unit ID', unit.id, unit)
       }
@@ -557,6 +691,21 @@ export default class War3MapViewer extends ModelViewer {
 
     this.unitsReady = true;
     this.anyReady = true;
+
+    let splatPromises = Object.entries(splats).map((splat) => {
+      let path = splat[0];
+      let locations = splat[1];
+
+      return this.load(path).whenLoaded()
+        .then((texture) => {
+          return new SplatModel(this.gl, texture, locations, this.corners, this.centerOffset);
+        });
+    });
+
+    Promise.all(splatPromises).then(models => {
+      this.uberSplatModels = models;
+      this.uberSplatsReady = true;
+    });
   }
 
   /**
@@ -645,8 +794,6 @@ export default class War3MapViewer extends ModelViewer {
     this.columns = columns - 1;
     this.rows = rows - 1;
 
-    this.calculateRamps();
-
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < columns; x++) {
         let bottomLeft = corners[y][x];
@@ -662,7 +809,28 @@ export default class War3MapViewer extends ModelViewer {
 
           // Is this a cliff, or a normal corner?
           if (bottomLeft.rampType) {
+            if (bottomLeft.rampType > 0) {
+              let cliffTexture = bottomLeft.cliffTexture;
+              if (cliffTexture === 15) {
+                cliffTexture = 1;
+              }
+              let cliffRow = this.cliffTilesets[cliffTexture];
+              let dir = cliffRow.rampModelDir;
+              let path = `Doodads\\Terrain\\${dir}\\${dir}${bottomLeft.rampName}0.mdx`;
 
+              let base = bottomLeft.layerHeight;
+              if (bottomLeft.cliffType === 1) {
+                base = Math.min(base, corners[y + 2][x].layerHeight, corners[y][x + 1].layerHeight, corners[y + 2][x + 1].layerHeight);
+              } else {
+                base = Math.min(base, corners[y + 1][x].layerHeight, corners[y][x + 2].layerHeight, corners[y + 1][x + 2].layerHeight);
+              }
+
+              if (!cliffs[path]) {
+                cliffs[path] = {locations: [], textures: []};
+              }
+              cliffs[path].locations.push(x * 128 + centerOffset[0], y * 128 + centerOffset[1], (base - 2) * 128);
+              cliffs[path].textures.push(cliffTexture);
+            }
           } else if (this.isCliff(x, y)) {
             let bottomLeftLayer = bottomLeft.layerHeight;
             let bottomRightLayer = corners[y][x + 1].layerHeight;
@@ -742,16 +910,16 @@ export default class War3MapViewer extends ModelViewer {
 
     let cliffHeightMap = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, cliffHeightMap);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.ALPHA, columns, rows, 0, gl.ALPHA, gl.FLOAT, cliffHeights);
 
     let heightMap = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, heightMap);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.ALPHA, columns, rows, 0, gl.ALPHA, gl.FLOAT, cornerHeights);
@@ -843,6 +1011,8 @@ export default class War3MapViewer extends ModelViewer {
     ];
 
     let n = [];
+
+    // Adjust terrain height inside ramps (set rampAdjust)
     for (let y = 1; y < rows - 1; ++y) {
       for (let x = 1; x < columns - 1; ++x) {
         let o = corners[y][x];
@@ -875,6 +1045,7 @@ export default class War3MapViewer extends ModelViewer {
       }
     }
 
+    // Calculate ramp tiles
     for (let y = 0; y < rows - 1; ++y) {
       for (let x = 0; x < columns - 1; ++x) {
         let a = corners[y][x];
@@ -888,12 +1059,11 @@ export default class War3MapViewer extends ModelViewer {
           if (b.layerHeight === ae && d.layerHeight === cf) {
             let base = Math.min(ae, cf);
             if (a.ramp === b.ramp && a.ramp === e.ramp && c.ramp === d.ramp && c.ramp === f.ramp && a.ramp !== c.ramp) {
-              let name = this.rampFileName0(a.layerHeight, e.layerHeight, f.layerHeight, c.layerHeight, base);
+              let name = this.rampFileName(e, f, c, a, base);
               if (ramps.includes(name)) {
                 a.rampName = name;
                 a.rampType = 1;
                 b.rampType = -1;
-                a.romp = b.romp = c.romp = d.romp = e.romp = f.romp = 1;
               }
             }
           }
@@ -905,14 +1075,63 @@ export default class War3MapViewer extends ModelViewer {
           if (c.layerHeight === ae && d.layerHeight === bf) {
             let base = Math.min(ae, bf);
             if (a.ramp === c.ramp && a.ramp === e.ramp && b.ramp === d.ramp && b.ramp === f.ramp && a.ramp !== b.ramp) {
-              let name = this.rampFileName0(b.layerHeight, f.layerHeight, e.layerHeight, a.layerHeight, base);
+              let name = this.rampFileName(b, f, e, a, base);
               if (ramps.includes(name)) {
                 a.rampName = name;
                 a.rampType = 2;
                 c.rampType = -1;
-                a.romp = b.romp = c.romp = d.romp = e.romp = f.romp = 1;
               }
             }
+          }
+        }
+      }
+    }
+
+    // Calculate cliff tiles
+    for (let y = 0; y < rows - 1; ++y) {
+      for (let x = 0; x < columns - 1; ++x) {
+        let a = corners[y][x];
+        let b = corners[y + 1][x];
+        let c = corners[y][x + 1];
+        let d = corners[y + 1][x + 1];
+        if (a.rampAdjust || b.rampAdjust || c.rampAdjust || d.rampAdjust) {
+          continue;
+        }
+        let base = a.layerHeight;
+        if (b.layerHeight !== base || c.layerHeight !== base || d.layerHeight !== base) {
+          a.cliff = true;
+        }
+      }
+    }
+
+    // Fix ramp cliffTexture
+    for (let y = 0; y < rows - 1; ++y) {
+      for (let x = 0; x < columns - 1; ++x) {
+        let a = corners[y][x], b;
+        if (a.rampType && a.rampType > 0) {
+          let x1 = x + 1, y1 = y + 1;
+          if (a.rampType === 1) {
+            b = corners[y + 1][x];
+            y1 = y + 2;
+          } else {
+            b = corners[y][x + 1];
+            x1 = x + 2;
+          }
+          let x0 = Math.max(0, x - 1), y0 = Math.max(0, y - 1);
+          x1 = Math.min(x1, columns - 1);
+          y1 = Math.min(y1, rows - 1);
+          let tex = null;
+          for (let ty = y0; ty <= y1 && tex == null; ++ty) {
+            for (let tx = x0; tx <= x1; ++tx) {
+              let tile = corners[ty][tx];
+              if (tile.cliff && !tile.rampType) {
+                tex = tile.cliffTexture;
+                break;
+              }
+            }
+          }
+          if (tex != null) {
+            a.cliffTexture = b.cliffTexture = tex;
           }
         }
       }
@@ -934,19 +1153,13 @@ export default class War3MapViewer extends ModelViewer {
       String.fromCharCode(65 + bottomLeftLayer - base);
   }
 
-  rampFileName0(a, b, c, d, base) {
-    let left = "LHX", right = "ABC";
-    if (a - base > 2 || b - base > 2 || c - base > 2 || d - base > 2) {
+  rampFileName(a, b, c, d, base) {
+    let ah = a.layerHeight - base, bh = b.layerHeight - base, ch = c.layerHeight - base, dh = d.layerHeight - base;
+    if (ah > 2 || bh > 2 || ch > 2 || dh > 2) {
       return "";
     }
-    return left[a - base] + left[b - base] + right[c - base] + right[d - base];
-  }
-  rampFileName1(a, b, c, d, base) {
-    let left = "ABC", right = "LHX";
-    if (a - base > 2 || b - base > 2 || c - base > 2 || d - base > 2) {
-      return "";
-    }
-    return left[a - base] + left[b - base] + right[c - base] + right[d - base];
+    let ramp = "LHX", cliff = "ABC";
+    return (a.ramp ? ramp : cliff)[ah] + (b.ramp ? ramp : cliff)[bh] + (c.ramp ? ramp : cliff)[ch] + (d.ramp ? ramp : cliff)[dh];
   }
 
   /**
@@ -1049,19 +1262,7 @@ export default class War3MapViewer extends ModelViewer {
    * @return {boolean}
    */
   isCliff(column, row) {
-    if (column < 1 || column > this.columns - 1 || row < 1 || row > this.rows - 1) {
-      return false;
-    }
-
-    let corners = this.corners;
-    let bl = corners[row][column], tl = corners[row + 1][column],
-        br = corners[row][column + 1], tr = corners[row + 1][column + 1];
-    if (bl.rampAdjust || tl.rampAdjust || br.rampAdjust || tr.rampAdjust) {
-      return false;
-    }
-    let blH = bl.layerHeight;
-
-    return blH !== br.layerHeight || blH !== tl.layerHeight || blH !== tr.layerHeight;
+    return !!this.corners[row][column].cliff;
   }
 
   /**
@@ -1110,8 +1311,9 @@ export default class War3MapViewer extends ModelViewer {
     for (let y = -1; y < 1; y++) {
       for (let x = -1; x < 1; x++) {
         if (column + x > 0 && column + x < columns - 1 && row + y > 0 && row + y < rows - 1) {
-          if (this.isCliff(column + x, row + y)) {
-            let texture = corners[row + y][column + x].cliffTexture;
+          let corner = corners[row + y][column + x];
+          if (this.isCliff(column + x, row + y) || corner.rampType) {
+            let texture = corner.cliffTexture;
 
             if (texture === 15) {
               texture = 1;
@@ -1256,6 +1458,75 @@ export default class War3MapViewer extends ModelViewer {
     }
 
     return 0;
+  }
+
+  addShadow(file, x, y) {
+    if (!this.shadows[file]) {
+      let path = `ReplaceableTextures\\Shadows\\${file}.blp`;
+      this.shadows[file] = [];
+      this.shadowTextures[file] = this.load(path);
+    }
+    this.shadows[file].push({x, y});
+  }
+
+  async initShadows() {
+    await this.whenLoaded(Object.values(this.shadowTextures));
+
+    let gl = this.gl;
+    let centerOffset = this.centerOffset;
+    let [columns, rows] = this.mapSize;
+    columns = (columns - 1) * 4;
+    rows = (rows - 1) * 4;
+
+    let shadowData;
+    const source = this.mapMpq.get('war3map.shd');
+    if (source) {
+      let buffer = source.arrayBuffer();
+      if (buffer.byteLength >= columns * rows) {
+        shadowData = new Uint8Array(source.arrayBuffer(), 0, columns * rows);
+      } else {
+        shadowData = new Uint8Array(columns * rows);
+      }
+    } else {
+      shadowData = new Uint8Array(columns * rows);
+    }
+
+    for (let [file, texture] of Object.entries(this.shadowTextures)) {
+      if (!texture.originalData) {
+        continue;
+      }
+      let {data, width, height} = texture.originalData;
+      let ox = Math.round(width * 0.3), oy = Math.round(height * 0.7);
+
+      for (let location of this.shadows[file]) {
+        let x0 = Math.floor((location.x - centerOffset[0]) / 32.0) - ox;
+        let y0 = Math.floor((location.y - centerOffset[1]) / 32.0) + oy;
+        for (let y = 0; y < height; ++y) {
+          if (y0 - y < 0 || y0 - y >= rows) {
+            continue;
+          }
+          for (let x = 0; x < width; ++x) {
+            if (x0 + x < 0 || x0 + x >= columns) {
+              continue;
+            }
+            if (data[(y * width + x) * 4 + 3]) {
+              shadowData[(y0 - y) * columns + x0 + x] = 255;
+            }
+          }
+        }
+      }
+    }
+
+    let shadowMap = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, shadowMap);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.ALPHA, columns, rows, 0, gl.ALPHA, gl.UNSIGNED_BYTE, shadowData);
+    this.shadowMap = shadowMap;
+
+    this.shadowsReady = true;
   }
 }
 

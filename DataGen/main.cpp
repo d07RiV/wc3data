@@ -40,10 +40,10 @@ File gzip(File src) {
   return File();
 }
 
-#define WRITE_ALL_IMAGES 1
-#define GENERATE_META 1
+#define WRITE_ALL_IMAGES 0
+#define GENERATE_META 0
 #define USE_CDN 1
-#define GENERATE_MAPS 0
+#define GENERATE_MAPS 1
 #define TEST_MAP 0
 #define NUM_IMAGE_ARCHIVES 8
 
@@ -150,16 +150,6 @@ MemoryFile write_meta(std::set<istring> const& names, CompositeLoader& loader, F
 
 int main() {
   CompositeLoader loader;
-  mpq::Archive mapa(File(path::root() / "maps/original.w3x"));
-  mapa.loadListFile();
-  for (size_t i = 0; i < mapa.getMaxFiles(); ++i) {
-    auto name = mapa.getFileName(i);
-    File f = mapa.load(i);
-    if (name && f) {
-      File(path::root() / "maps/original" / name, "wb").copy(f);
-    }
-  }
-  return 0;
 
 #if !TEST_MAP
 #if USE_CDN
@@ -180,6 +170,7 @@ int main() {
   loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Tilesets\\", cdnloader));
   loader.add(std::make_shared<PrefixLoader>("War3.w3mod:", cdnloader));
   loader.add(cdnloader);
+
 
   istring tset = "War3.w3mod:_Tilesets\\";
 

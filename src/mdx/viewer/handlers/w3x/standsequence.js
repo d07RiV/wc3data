@@ -2,14 +2,19 @@ function sequenceSorter(a, b) {
   return a.sequence.rarity < b.sequence.rarity;
 }
 
-function filterSequences(type, sequences) {
+function sequenceMatch(props, name) {
+  let names = name.toLowerCase().split(/[- ]/).map(x => x.trim());
+  return props.every(p => names.includes(p));
+}
+
+function filterSequences(type, sequences, props) {
   let filtered = [];
 
   for (let i = 0, l = sequences.length; i < l; i++) {
     let sequence = sequences[i],
       name = sequence.name.split('-')[0].replace(/\d/g, '').trim().toLowerCase();
 
-    if (name === type) {
+    if (name === type && sequenceMatch(props, sequence.name)) {
       filtered.push({sequence, index: i});
     }
   }
@@ -17,8 +22,16 @@ function filterSequences(type, sequences) {
   return filtered;
 }
 
-function selectSequence(type, sequences) {
-  sequences = filterSequences(type, sequences);
+function selectSequence(type, original, animProps) {
+  let props = animProps ? animProps.split(',').filter(x => x.length).map(p => p.toLowerCase()) : [];
+  let sequences = filterSequences(type, original, props);
+  if (!sequences.length) {
+    props.push(type);
+    let first = original.findIndex(x => sequenceMatch(props, x.name));
+    if (first >= 0) {
+      sequences.push({sequence: original[first], index: first});
+    }
+  }
 
   sequences.sort(sequenceSorter);
 
@@ -42,19 +55,19 @@ function selectSequence(type, sequences) {
   return sequence;
 }
 
-function standSequence(target) {
+function standSequence(target, animProps) {
   let sequences = target.model.sequences;
-  let sequence = selectSequence('stand', sequences);
+  let sequence = selectSequence('stand', sequences, animProps);
 
   if (sequence) {
     target.setSequence(sequence.index);
   }
 };
 
-export default function standOnRepeat(target) {
+export default function standOnRepeat(target, animProps) {
   target.model.whenLoaded()
     .then((model) => {
-      standSequence(target);
-      target.on('seqend', standSequence);
+      standSequence(target, animProps);
+      target.on('seqend', () => standSequence(target, animProps));
     });
 };

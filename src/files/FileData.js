@@ -3,7 +3,9 @@ import classNames from 'classnames';
 import pathHash, { makeUid, parseUid, equalUid } from 'data/hash';
 import { Glyphicon } from 'react-bootstrap';
 import { downloadBlob } from 'utils';
+import SlkFile from 'mdx/parsers/slk/file';
 
+import FileSlkView from './FileSlk';
 import FileHexView from './FileHex';
 import FileTextView from './FileText';
 import FileImageView from './FileImage';
@@ -20,10 +22,11 @@ export class FileData extends React.Component {
       this.binary = file.data;
       this.flags = file.flags;
       if (this.flags & 1) {
-        const text = new TextDecoder().decode(this.binary).split(/\r\n?|\n/);
+        const text = new TextDecoder().decode(this.binary);
+        const lines = text.split(/\r\n?|\n/);
         this.text = [];
         const maxLength = 2048;
-        text.forEach(line => {
+        lines.forEach(line => {
           if (line.length > maxLength) {
             for (let i = 0; i < line.length; i += maxLength) {
               this.text.push(line.substr(i, maxLength));
@@ -34,6 +37,12 @@ export class FileData extends React.Component {
         });
         this.textHeights = this.text.map(() => 16);
         state.panel = "text";
+
+        try {
+          this.slk = new SlkFile(text);
+          state.panel = "slk";
+        } catch (e) {
+        }
       }
       if (this.flags & 6) {
         const blob = new Blob([this.binary], {type: (this.flags & 4) ? "audio/mpeg" : "audio/wav"});
@@ -61,6 +70,7 @@ export class FileData extends React.Component {
     const { panel } = this.state;
     switch (panel) {
     case "hex": return <FileHexView data={this.binary}/>;
+    case "slk": return <FileSlkView data={this.slk}/>;
     case "text": return <FileTextView lines={this.text} heights={this.textHeights}/>;
     case "audio": return <FileAudioView audio={this.audio}/>;
     case "model": return <FileModelView id={this.props.id}/>;
@@ -103,6 +113,7 @@ export class FileData extends React.Component {
           <li key="dl" className="tab-xbutton" onClick={this.onDownload}>Download <Glyphicon glyph="download-alt"/></li>
           {this.makePanel("hex", "Hex")}
           {this.text != null && this.makePanel("text", "Text")}
+          {this.slk != null && this.makePanel("slk", "SLK")}
           {this.audio != null && this.makePanel("audio", "Audio")}
           {(this.flags & 8) !== 0 && this.makePanel("model", "Model")}
           {this.image != null && this.makePanel("image", "Image")}

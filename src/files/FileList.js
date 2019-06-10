@@ -18,7 +18,7 @@ const processFiles = listfile => {
   };
   const names = listfile.split("\n").filter(n => n.length > 0);
   names.forEach(path => {
-    const p = path.split(/[\\/]/);
+    const p = path.split(/[\\/:]/);
     let cd = root;
     for (let i = 0; i < p.length - 1; ++i) {
       const pl = p[i].toLowerCase();

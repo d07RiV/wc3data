@@ -4,10 +4,12 @@ export default {
   vsGround: `
     uniform mat4 u_mvp;
     uniform sampler2D u_heightMap;
+    uniform sampler2D u_heightMap0;
     uniform vec2 u_size;
     uniform vec2 u_offset;
     uniform float u_tilesetHeight;
     uniform float u_tilesetCount;
+    uniform vec2 u_pixel;
 
     attribute vec2 a_position;
     ${shaders.instanceId}
@@ -15,6 +17,7 @@ export default {
     attribute vec4 a_variations;
 
     varying vec2 v_uv[4];
+    varying vec2 v_suv;
     varying vec3 v_normal;
 
     vec4 getCell(float tileset, float variation) {
@@ -33,6 +36,8 @@ export default {
       return clamp(cell.xy + uv * cellSize, cell.xy + pixelSize, cell.zw - pixelSize);
     }
 
+    const float normalDist = 1.0;
+
     void main() {
       if (a_textures[0] > 0.5) {
         v_uv[0] = getUV(a_position, a_textures[0], a_variations[0]);
@@ -40,23 +45,26 @@ export default {
         v_uv[2] = getUV(a_position, a_textures[2], a_variations[2]);
         v_uv[3] = getUV(a_position, a_textures[3], a_variations[3]);
 
+        vec2 halfPixel = vec2(0.5, 0.5) * u_pixel;
         vec2 corner = vec2(mod(a_InstanceID, u_size.x), floor(a_InstanceID / u_size.x));
-        vec2 base = corner + a_position;
-        float height = texture2D(u_heightMap, base / u_size).a;
+        vec2 base = floor(corner + a_position);
+        float height = texture2D(u_heightMap, base * u_pixel + halfPixel).a;
 
-        float hL = texture2D(u_heightMap, vec2(base - vec2(1.0, 0.0)) / (u_size)).a;
-        float hR = texture2D(u_heightMap, vec2(base + vec2(1.0, 0.0)) / (u_size)).a;
-        float hD = texture2D(u_heightMap, vec2(base - vec2(0.0, 1.0)) / (u_size)).a;
-        float hU = texture2D(u_heightMap, vec2(base + vec2(0.0, 1.0)) / (u_size)).a;
+        float hL = texture2D(u_heightMap0, vec2(base - vec2(normalDist, 0.0)) * u_pixel + halfPixel).a;
+        float hR = texture2D(u_heightMap0, vec2(base + vec2(normalDist, 0.0)) * u_pixel + halfPixel).a;
+        float hD = texture2D(u_heightMap0, vec2(base - vec2(0.0, normalDist)) * u_pixel + halfPixel).a;
+        float hU = texture2D(u_heightMap0, vec2(base + vec2(0.0, normalDist)) * u_pixel + halfPixel).a;
 
-        v_normal = normalize(vec3(hL - hR, hD - hU, 2.0));
+        v_normal = normalize(vec3(hL - hR, hD - hU, normalDist * 2.0));
 
+        v_suv = base / u_size;
         gl_Position = u_mvp * vec4(base * 128.0 + u_offset, height * 128.0, 1.0);
       } else {
         v_uv[0] = vec2(0.0);
         v_uv[1] = vec2(0.0);
         v_uv[2] = vec2(0.0);
         v_uv[3] = vec2(0.0);
+        v_suv = vec2(0.0);
 
         v_normal = vec3(0.0);
 
@@ -66,11 +74,14 @@ export default {
   `,
   fsGround: `
     uniform sampler2D u_tilesets;
+    uniform sampler2D u_shadowMap;
 
     varying vec2 v_uv[4];
+    varying vec2 v_suv;
     varying vec3 v_normal;
 
     const vec3 lightDirection = normalize(vec3(-0.3, -0.3, 0.25));
+    const float shadowStrength = 0.5;
 
     vec4 blend(vec4 color, vec2 uv) {
       vec4 texel = texture2D(u_tilesets, uv).rgba;
@@ -84,7 +95,9 @@ export default {
       color = blend(color, v_uv[2]);
       color = blend(color, v_uv[3]);
 
-      color *= clamp(dot(v_normal, lightDirection) + 0.45, 0.0, 1.0);
+      float shadow = texture2D(u_shadowMap, v_suv).a;
+      color.xyz *= clamp(dot(v_normal, lightDirection) + 0.45, 0.0, 1.0);
+      color.xyz *= 1.0 - shadow * shadowStrength;
 
       gl_FragColor = color;
     }
@@ -94,6 +107,7 @@ export default {
     uniform sampler2D u_heightMap;
     uniform sampler2D u_waterHeightMap;
     uniform vec2 u_size;
+    uniform vec2 u_pixel;
     uniform vec2 u_offset;
     uniform float u_offsetHeight;
     uniform float u_tileIndex;
@@ -117,10 +131,11 @@ export default {
       if (a_isWater > 0.5) {
         v_uv = (vec2(mod(u_tileIndex, 16.0), floor(u_tileIndex / 16.0)) + a_position) / vec2(16.0, 3.0);
 
+        vec2 halfPixel = vec2(0.5, 0.5) * u_pixel;
         vec2 corner = vec2(mod(a_InstanceID, u_size.x), floor(a_InstanceID / u_size.x));
         vec2 base = corner + a_position;
-        float height = texture2D(u_heightMap, base / u_size).a;
-        float waterHeight = texture2D(u_waterHeightMap, base / u_size).a + u_offsetHeight;
+        float height = texture2D(u_heightMap, base * u_pixel + halfPixel).a;
+        float waterHeight = texture2D(u_waterHeightMap, base * u_pixel + halfPixel).a + u_offsetHeight;
         float value = clamp(waterHeight - height, 0.0, 1.0);
 
         if (value <= deepLevel) {
@@ -154,6 +169,7 @@ export default {
     uniform mat4 u_mvp;
     uniform sampler2D u_heightMap;
     uniform vec2 u_pixel;
+    uniform vec2 u_size;
     uniform vec2 u_centerOffset;
 
     attribute vec3 a_position;
@@ -164,6 +180,7 @@ export default {
 
     varying vec3 v_normal;
     varying vec2 v_uv;
+    varying vec2 v_suv;
     varying float v_texture;
     varying vec3 v_position;
 
@@ -171,24 +188,16 @@ export default {
       // Half of a pixel in the cliff height map.
       vec2 halfPixel = u_pixel * 0.5;
 
-      // The bottom left corner of the map tile this vertex is on.
-      vec2 corner = floor((a_instancePosition.xy - u_centerOffset.xy) / 128.0);
-
-      // Get the 4 closest heights in the height map.
-      float bottomLeft = texture2D(u_heightMap, corner * u_pixel + halfPixel).a;
-      float bottomRight = texture2D(u_heightMap, (corner + vec2(1.0, 0.0)) * u_pixel + halfPixel).a;
-      float topLeft = texture2D(u_heightMap, (corner + vec2(0.0, 1.0)) * u_pixel + halfPixel).a;
-      float topRight = texture2D(u_heightMap, (corner + vec2(1.0, 1.0)) * u_pixel + halfPixel).a;
-
       vec3 position = vec3(a_position.y, -a_position.x, a_position.z);
-      
-      // Do a bilinear interpolation between the heights to get the final value.
-      float bottom = mix(bottomLeft, bottomRight, position.x / 128.0);
-      float top = mix(topLeft, topRight, position.x / 128.0);
-      float height = mix(bottom, top, position.y / 128.0);
+
+      // The bottom left corner of the map tile this vertex is on.
+      vec2 corner = ((a_instancePosition.xy - u_centerOffset.xy + position.xy) / 128.0);
+
+      float height = texture2D(u_heightMap, corner * u_pixel + halfPixel).a;
 
       v_normal = a_normal;
       v_uv = a_uv;
+      v_suv = corner / u_size;
       v_texture = a_instanceTexture;
       v_position = position + vec3(a_instancePosition.xy, a_instancePosition.z + height * 128.0);
 
@@ -199,13 +208,16 @@ export default {
     #extension GL_OES_standard_derivatives : enable
     uniform sampler2D u_texture1;
     uniform sampler2D u_texture2;
+    uniform sampler2D u_shadowMap;
 
     varying vec3 v_normal;
     varying vec2 v_uv;
+    varying vec2 v_suv;
     varying float v_texture;
     varying vec3 v_position;
 
     const vec3 lightDirection = normalize(vec3(-0.3, -0.3, 0.25));
+    const float shadowStrength = 0.5;
 
     vec4 sample(int texture, vec2 uv) {
       if (texture == 0) {
@@ -221,7 +233,68 @@ export default {
       vec3 faceNormal = cross(dFdx(v_position), dFdy(v_position));
       vec3 normal = normalize((faceNormal + v_normal) * 0.5);
 
-      color *= clamp(dot(normal, lightDirection) + 0.45, 0.1, 1.0);
+      float shadow = texture2D(u_shadowMap, v_suv).a;
+      color.xyz *= clamp(dot(normal, lightDirection) + 0.45, 0.1, 1.0);
+      color.xyz *= 1.0 - shadow * shadowStrength;
+
+      gl_FragColor = color;
+    }
+  `,
+  vsUberSplat: `
+    uniform mat4 u_mvp;
+    uniform sampler2D u_heightMap;
+    uniform vec2 u_pixel;
+    uniform vec2 u_size;
+    uniform vec2 u_shadowPixel;
+    uniform vec2 u_centerOffset;
+
+    attribute vec2 a_position;
+    attribute vec3 a_uv;
+
+    varying vec3 v_uv;
+    varying vec2 v_suv;
+    varying vec3 v_normal;
+
+    const float depthBias = 1.0;
+
+    const float normalDist = 0.25;
+
+    void main() {
+      vec2 halfPixel = u_pixel * 0.5;
+
+      vec2 base = (a_position - u_centerOffset) / 128.0;
+      float height = texture2D(u_heightMap, base * u_pixel + halfPixel).a;
+
+      float hL = texture2D(u_heightMap, vec2(base - vec2(normalDist, 0.0)) * u_pixel + halfPixel).a;
+      float hR = texture2D(u_heightMap, vec2(base + vec2(normalDist, 0.0)) * u_pixel + halfPixel).a;
+      float hD = texture2D(u_heightMap, vec2(base - vec2(0.0, normalDist)) * u_pixel + halfPixel).a;
+      float hU = texture2D(u_heightMap, vec2(base + vec2(0.0, normalDist)) * u_pixel + halfPixel).a;
+
+      v_normal = normalize(vec3(hL - hR, hD - hU, normalDist * 2.0));
+      v_uv = a_uv;
+      v_suv = base / u_size;
+
+      gl_Position = u_mvp * vec4(a_position, height * 128.0 + depthBias, 1.0);
+    }
+  `,
+  fsUberSplat: `
+    uniform sampler2D u_texture;
+    uniform sampler2D u_shadowMap;
+
+    varying vec3 v_uv;
+    varying vec2 v_suv;
+    varying vec3 v_normal;
+
+    const vec3 lightDirection = normalize(vec3(-0.3, -0.3, 0.25));
+    const float shadowStrength = 0.5;
+
+    void main() {
+      vec4 color = texture2D(u_texture, clamp(v_uv.xy, 0.0, 1.0)).rgba;
+
+      float shadow = texture2D(u_shadowMap, v_suv).a;
+      color.xyz *= clamp(dot(v_normal, lightDirection) + 0.45, 0.0, 1.0);
+      color.xyz *= 1.0 - shadow * shadowStrength;
+      color.w *= v_uv.z;
 
       gl_FragColor = color;
     }

@@ -83,7 +83,7 @@ class MapData {
     this.cache = cache;
     this.archive = archive;
     this.id = id;
-    this.name = name;
+    this.name = name.replace(/\|(c[0-9a-fA-F]{6,8}|r)/g, "");
     this.isMap = true;
   }
 
@@ -92,6 +92,11 @@ class MapData {
       return this.objects_;
     }
     const text = this.archive.loadFile("objects.json");
+    if (!text) {
+      const version = Math.max(...Object.keys(this.cache.versions));
+      const data = this.cache.data(version);
+      return data ? data.then(v => v.objects()) : Promise.resolve(null);
+    }
     return this.objects_ = Promise.resolve(text ? postProcess(JSON.parse(text)) : null);
   }
 

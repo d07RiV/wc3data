@@ -442,27 +442,22 @@ MemoryFile MapParser::processAll() {
     mapArchive->loadListFile();
   }
 
-  if (hasCustomObjects()) {
-    MemoryFile outFile = processObjects();
-    outArc.add("objects.json", outFile, true);
+  MemoryFile outFile = processObjects();
+  outArc.add("objects.json", outFile, true);
 
-    StringLib names;
-    for (int type = 0; type < GameData::NUM_TYPES; ++type) {
-      int col = data.data[type]->columnIndex("name");
-      if (col < 0) continue;
-      for (size_t i = 0; i < data.data[type]->numUnits(); ++i) {
-        UnitData* unit = data.data[type]->unit(i);
-        if (unit->hasData(col)) {
-          names.add(unit->id(), unit->getStringData(col, 0));
-        }
+  StringLib names;
+  for (int type = 0; type < GameData::NUM_TYPES; ++type) {
+    int col = data.data[type]->columnIndex("name");
+    if (col < 0) continue;
+    for (size_t i = 0; i < data.data[type]->numUnits(); ++i) {
+      UnitData* unit = data.data[type]->unit(i);
+      if (unit->hasData(col)) {
+        names.add(unit->id(), unit->getStringData(col, 0));
       }
     }
-    names.write(outArc.create("names.lib", true));
-    data.wts.write(outArc.create("strings.lib", true));
-  } else {
-    data.wts = WTSData(loader.load("war3map.wts"));
-    data.wts.write(outArc.create("strings.lib", true));
   }
+  names.write(outArc.create("names.lib", true));
+  data.wts.write(outArc.create("strings.lib", true));
 
   File infoFile = loader.load("war3map.w3i");
   if (infoFile) {

@@ -55,9 +55,19 @@ export default class SlkFile {
             }
 
             rows[y][x] = value;
+          } else if (op === 'A') {
+            if (!this.comments) {
+              this.comments = [];
+            }
+            if (!this.comments[y]) {
+              this.comments[y] = [];
+            }
+            this.comments[y][x] = valueString;
           }
         }
       }
     }
+
+    this.cols = this.rows.reduce((m, r) => Math.max(m, r.length), 0);
   }
 }
