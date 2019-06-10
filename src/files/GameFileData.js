@@ -112,7 +112,7 @@ class GameFileDataFinder extends React.PureComponent {
     const names = listFile.split("\n").filter(n => n.length > 0);
     this.name = names.find(path => {
       const unk = path.match(/^Unknown\\([0-9A-F]{16})/);
-      const key = unk ? parseUid(unk[1]) : pathHash(path);
+      const key = unk ? parseUid(unk[1]) : pathHash(path, true);
       return equalUid(key, id);
     });
     if (this.name != null) {

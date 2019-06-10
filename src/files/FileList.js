@@ -10,7 +10,7 @@ import { withAsync } from 'utils';
 
 import Panel from 'react-flex-panel';
 
-const processFiles = listfile => {
+const processFiles = (listfile, imExt) => {
   const root = {
     name: "",
     dirs: {},
@@ -36,7 +36,7 @@ const processFiles = listfile => {
     cd.files.push({
       name: p[p.length - 1],
       path,
-      key: unk ? parseUid(unk[1]) : pathHash(path),
+      key: unk ? parseUid(unk[1]) : pathHash(path, imExt),
       ext: ext ? ext[1].toLowerCase() : "unknown",
     });
   });
@@ -227,7 +227,7 @@ class FileListInner extends React.PureComponent {
   constructor(props) {
     super(props);
 
-    const res = processFiles(props.listFile);
+    const res = processFiles(props.listFile, !props.isMap);
     this.files = res.files;
     this.root = new FileDirectory(res.root);
     this.root.onResize = this.onResize;
@@ -271,7 +271,7 @@ class FileListInner extends React.PureComponent {
   }
 
   render() {
-    const {listFile, id, className, ...props} = this.props;
+    const {listFile, id, className, isMap, ...props} = this.props;
     const {search, searchResults} = this.state;
 
     if (!this.root) {
@@ -329,4 +329,4 @@ const EmptyPanel = ({id, listFile, className, ...props}) => <Panel className={cl
 
 export const FileList = withAsync({
   listFile: ({data}) => data.listFile(),
-}, ({data, ...props}) => <FileListInner key={data.id} {...props}/>, EmptyPanel, EmptyPanel);
+}, ({data, ...props}) => <FileListInner key={data.id} isMap={data.isMap} {...props}/>, EmptyPanel, EmptyPanel);

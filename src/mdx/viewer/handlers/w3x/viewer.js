@@ -319,6 +319,8 @@ export default class War3MapViewer extends ModelViewer {
       let {columns, rows, centerOffset, heightMap, heightMapSize} = this.terrainRenderData;
 
       gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.blendEquation(gl.FUNC_ADD);
 
       webgl.useShaderProgram(shader);
 
@@ -400,11 +402,11 @@ export default class War3MapViewer extends ModelViewer {
       this.gl.viewport(...this.camera.rect);
 
       this.renderGround();
-      this.renderUberSplats();
       this.renderCliffs();
       // this.renderDoodads(true);
       super.renderOpaque();
       // this.renderDoodads(false);
+      this.renderUberSplats();
       this.renderWater();
       super.renderTranslucent();
     }
@@ -551,9 +553,6 @@ export default class War3MapViewer extends ModelViewer {
       let mpqFile = this.mapMpq.get(fileVar) || this.mapMpq.get(file);
       let model;
 
-      if (doodad.id === 'LTlt') {
-        debugger;
-      }
       if (mpqFile) {
         model = this.load(mpqFile.name);
       } else {
@@ -719,6 +718,9 @@ export default class War3MapViewer extends ModelViewer {
 
     for (let groundTileset of w3e.groundTilesets) {
       let row = this.terrainData.getRow(groundTileset);
+      if (!row) {
+        continue;
+      }
 
       this.tilesets.push(row);
       this.tilesetTextures.push(this.load(`${row.dir}\\${row.file}.blp`));
@@ -753,6 +755,9 @@ export default class War3MapViewer extends ModelViewer {
 
     for (let cliffTileset of w3e.cliffTilesets) {
       let row = this.cliffTypesData.getRow(cliffTileset);
+      if (!row) {
+        continue;
+      }
 
       this.cliffTilesets.push(row);
       this.cliffTextures.push(this.load(`${row.texDir}\\${row.texFile}.blp`));

@@ -30,9 +30,9 @@ export function pathHashTyped(name, hashType = 1) {
   return seed1;
 }
 
-export default function pathHash(name) {
-  let m = name.match(/^(.*)\.(?:blp|dds|gif|jpg|jpeg|png|tga)$/i);
-  if (m) {
+export default function pathHash(name, imExt) {
+  let m;
+  if (imExt && (m = name.match(/^(.*)\.(?:blp|dds|gif|jpg|jpeg|png|tga)$/i))) {
     name = m[1];
   }
   let delta = 0;

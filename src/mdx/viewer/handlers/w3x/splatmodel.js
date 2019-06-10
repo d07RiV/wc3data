@@ -51,10 +51,6 @@ export default class SplatModel {
       for (let i = 0; i < iy1 - iy0; ++i) {
         for (let j = 0; j < ix1 - ix0; ++j) {
           let i0 = start + i * step + j;
-          let corner = corners[iy0 + i][ix0 + j];
-          if (corner.rampType || corner.cliff) {
-            continue;
-          }
           indices.push(i0, i0 + 1, i0 + step, i0 + 1, i0 + step + 1, i0 + step);
         }
       }

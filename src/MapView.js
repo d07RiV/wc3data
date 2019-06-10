@@ -20,7 +20,7 @@ export default class MapHome extends React.Component {
   distance = 2000;
   center = vec3.create();
   minDistance = 500;
-  maxDistance = 10000;
+  maxDistance = 20000;
   
   componentWillUnmount() {
     if (this.frame) {
@@ -115,6 +115,9 @@ export default class MapHome extends React.Component {
     this.viewer.updateAndRender();
   }
 
+  componentWillUnmount() {
+    this.unmounted = true;
+  }
   
   componentDidMount() {
     if (!this.canvas) {
@@ -141,7 +144,18 @@ export default class MapHome extends React.Component {
     this.viewer.gl.clearColor(0.3, 0.3, 0.3, 1);
     this.viewer.on('error', (target, error, reason) => {
       if (error === "FailedToFetch") {
-        this.setState(({errors}) => ({errors: [...errors, `Failed to load ${target.path}`]}));
+        const message = `Failed to load ${target.path}`;
+        this.setState(({errors}) => ({errors: [...errors, message]}));
+        setTimeout(() => {
+          if (this.unmounted) return;
+          this.setState(({errors}) => {
+            let idx = errors.indexOf(message);
+            if (idx >= 0) {
+              errors = errors.splice(idx, 1);
+            }
+            return {errors};
+          });
+        }, 5000);
       }
     });
     this.scene = this.viewer.scene;

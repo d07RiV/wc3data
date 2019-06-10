@@ -65,9 +65,9 @@ class BaseData {
   }
 }
 
-const fileId = name => {
+const fileId = (name, imExt) => {
   if (typeof name === "string") {
-    return pathHash(name);
+    return pathHash(name, imExt);
   } else if (name != null && typeof name[0] === "number") {
     return name;
   } else {
@@ -139,7 +139,7 @@ class MapData {
   }
 
   iconByName(name) {
-    return this.icon(pathHash(name));
+    return this.icon(pathHash(name, true));
   }
 }
 
@@ -257,11 +257,11 @@ export default class AppCache extends Cache {
     }
   }
   iconByName(name) {
-    return this.icon(pathHash(name));
+    return this.icon(pathHash(name, true));
   }
 
   image(name, tileset) {
-    let id = fileId(name);
+    let id = fileId(name, true);
     const uid = makeUid(id);
     let path = `/api/images/${uid}`;
     if (tileset) {
@@ -271,7 +271,7 @@ export default class AppCache extends Cache {
   }
 
   binary(name, tileset) {
-    let id = fileId(name);
+    let id = fileId(name, true);
     const uid = makeUid(id);
     let path = `/api/files/${uid}`;
     if (tileset) {
