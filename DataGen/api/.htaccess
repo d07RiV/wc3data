@@ -1,0 +1,8 @@
+RewriteEngine On
+RewriteBase /api/
+
+RewriteRule ^(versions\.json|rootlist\.txt|images\.dat|meta\.gzx)$ ../work/$0 [L]
+RewriteRule ^maps/[a-zA-Z0-9'~_\-()]*\.gzx$ ../work/$0 [L]
+RewriteRule ^icons(\d+)\.png$ ../work/$0 [L]
+RewriteRule ^(\d+)\.json$ data.php [L]
+RewriteRule ^(images|files)/[a-fA-F0-9]{16}$ resources.php [L,QSA]

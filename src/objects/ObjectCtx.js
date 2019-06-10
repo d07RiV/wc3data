@@ -15,6 +15,7 @@ export const ObjectIcon = ({object}) => (
       if (object.icon == null) {
         return null;
       }
+      debugger;
       const icon = cache.icon(object.icon);
       return <span className="Icon" style={icon}/>;
     }}
