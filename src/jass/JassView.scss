@@ -89,16 +89,18 @@
       border-bottom-right-radius: 0.5em;
     }
 
-    .jkey { font-weight: bold; }
-    .jtyp { font-weight: bold; color: #05A; }
-    .jcon { color: #007; }
-    .jnum { color: #007; }
-    .jnat { color: #800080; }
-    .jbjf { color: #f00; }
-    .jchr { font-weight: bold; font-style: italic; text-decoration: underline; color: #000; }
-    .jstr { font-style: italic; color: #008; }
-    .jcom { font-style: italic; color: #080; }
   }
+}
+.JassColors, .JassLines {
+  .jkey { font-weight: bold; }
+  .jtyp { font-weight: bold; color: #05A; }
+  .jcon { color: #007; }
+  .jnum { color: #007; }
+  .jnat { color: #800080; }
+  .jbjf { color: #f00; }
+  .jchr { font-weight: bold; font-style: italic; text-decoration: underline; color: #000; }
+  .jstr { font-style: italic; color: #008; }
+  .jcom { font-style: italic; color: #080; }
 }
 
 #jass-options {

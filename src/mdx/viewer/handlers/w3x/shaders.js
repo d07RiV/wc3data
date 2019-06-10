@@ -195,7 +195,7 @@ export default {
 
       float height = texture2D(u_heightMap, corner * u_pixel + halfPixel).a;
 
-      v_normal = a_normal;
+      v_normal = vec3(a_normal.y, -a_normal.x, a_normal.z);
       v_uv = a_uv;
       v_suv = corner / u_size;
       v_texture = a_instanceTexture;
@@ -231,7 +231,7 @@ export default {
       vec4 color = sample(int(v_texture+0.01), v_uv).rgba;
 
       vec3 faceNormal = cross(dFdx(v_position), dFdy(v_position));
-      vec3 normal = normalize((faceNormal + v_normal) * 0.5);
+      vec3 normal = normalize(v_normal);//(faceNormal + v_normal) * 0.5);
 
       float shadow = texture2D(u_shadowMap, v_suv).a;
       color.xyz *= clamp(dot(normal, lightDirection) + 0.45, 0.1, 1.0);

@@ -26,6 +26,9 @@
       &.file-mdx, &.file-mdl {
         background-image: url(./assets/file_model.png);
       }
+      &.file-txt, &.file-slk, &.file-j {
+        background-image: url(./assets/file_text.png);
+      }
     }
   }
 }

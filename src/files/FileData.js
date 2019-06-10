@@ -4,6 +4,7 @@ import pathHash, { makeUid, parseUid, equalUid } from 'data/hash';
 import { Glyphicon } from 'react-bootstrap';
 import { downloadBlob } from 'utils';
 import SlkFile from 'mdx/parsers/slk/file';
+import encoding from 'text-encoding';
 
 import FileSlkView from './FileSlk';
 import FileHexView from './FileHex';
@@ -11,6 +12,7 @@ import FileTextView from './FileText';
 import FileImageView from './FileImage';
 import FileAudioView from './FileAudio';
 import FileModelView from './FileModel';
+import FileJassView from './FileJass';
 
 export class FileData extends React.Component {
   constructor(props) {
@@ -22,26 +24,31 @@ export class FileData extends React.Component {
       this.binary = file.data;
       this.flags = file.flags;
       if (this.flags & 1) {
-        const text = new TextDecoder().decode(this.binary);
+        const text = new encoding.TextDecoder().decode(this.binary);
         const lines = text.split(/\r\n?|\n/);
-        this.text = [];
-        const maxLength = 2048;
-        lines.forEach(line => {
-          if (line.length > maxLength) {
-            for (let i = 0; i < line.length; i += maxLength) {
-              this.text.push(line.substr(i, maxLength));
+        if (this.isJass()) {
+          this.jass = lines;
+          state.panel = "jass";
+        } else {
+          this.text = [];
+          const maxLength = 2048;
+          lines.forEach(line => {
+            if (line.length > maxLength) {
+              for (let i = 0; i < line.length; i += maxLength) {
+                this.text.push(line.substr(i, maxLength));
+              }
+            } else {
+              this.text.push(line);
             }
-          } else {
-            this.text.push(line);
-          }
-        });
-        this.textHeights = this.text.map(() => 16);
-        state.panel = "text";
+          });
+          this.textHeights = this.text.map(() => 16);
+          state.panel = "text";
 
-        try {
-          this.slk = new SlkFile(text);
-          state.panel = "slk";
-        } catch (e) {
+          try {
+            this.slk = new SlkFile(text);
+            state.panel = "slk";
+          } catch (e) {
+          }
         }
       }
       if (this.flags & 6) {
@@ -72,6 +79,7 @@ export class FileData extends React.Component {
     case "hex": return <FileHexView data={this.binary}/>;
     case "slk": return <FileSlkView data={this.slk}/>;
     case "text": return <FileTextView lines={this.text} heights={this.textHeights}/>;
+    case "jass": return <FileJassView lines={this.jass}/>;
     case "audio": return <FileAudioView audio={this.audio}/>;
     case "model": return <FileModelView id={this.props.id}/>;
     case "image": return <FileImageView data={this.binary} image={this.image}/>;
@@ -97,6 +105,15 @@ export class FileData extends React.Component {
     return makeUid(id);
   }
 
+  isJass() {
+    const name = this.getName();
+    if (name && name.match(/\.j$/i)) {
+      return true;
+    }
+    const id = this.props.id;
+    return equalUid(pathHash('war3map.j'), id) || equalUid(pathHash('Scripts/war3map.j'), id);
+  }
+
   onDownload = () => {
     const blob = new Blob([this.binary], {type: "application/octet-stream"});
     downloadBlob(blob, this.getName());
@@ -113,6 +130,7 @@ export class FileData extends React.Component {
           <li key="dl" className="tab-xbutton" onClick={this.onDownload}>Download <Glyphicon glyph="download-alt"/></li>
           {this.makePanel("hex", "Hex")}
           {this.text != null && this.makePanel("text", "Text")}
+          {this.jass != null && this.makePanel("jass", "JASS")}
           {this.slk != null && this.makePanel("slk", "SLK")}
           {this.audio != null && this.makePanel("audio", "Audio")}
           {(this.flags & 8) !== 0 && this.makePanel("model", "Model")}

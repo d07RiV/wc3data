@@ -14,10 +14,10 @@ EM_JS(void, write_output, (void const* ptr, int size), {
   self.postMessage({ result: HEAPU8.slice(ptr, ptr + size) });
   });
 EM_JS(void, write_error, (char const* err), {
-  const end = HEAPU8.indexOf(0, err);
-  const text = new TextDecoder().decode(HEAPU8.subarray(err, end));
+  //const end = HEAPU8.indexOf(0, err);
+  //const text = new TextDecoder().decode(HEAPU8.subarray(err, end));
   //const text = (new Buffer(HEAPU8.subarray(err, end))).toString('utf8');
-  self.postMessage({ error: text });
+  self.postMessage({ error: HEAPU8.subarray(err, end) });
 });
 
 extern "C" {

@@ -1,6 +1,6 @@
 import React from 'react';
 
-function withAsync(requests, Component, Loading, Error) {
+export function withAsync(requests, Component, Loading, Error) {
   const requestNames = Object.keys(requests);
   return class WithAsync extends React.Component {
     static displayName = `WithAsync(${Component.displayName || Component.name || "Component"})`
@@ -79,9 +79,8 @@ function withAsync(requests, Component, Loading, Error) {
   }
 }
 
-function withAsyncLoading(requests, Component, Error) {
+export function withAsyncLoading(requests, Component, Error) {
   return withAsync(requests, Component, Component, Error);
 }
 
-export { withAsync, withAsyncLoading };
 export default withAsync;

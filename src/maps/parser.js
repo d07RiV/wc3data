@@ -1,3 +1,4 @@
+import encoding from 'text-encoding';
 import Worker from './parser.worker.js';
 
 const parseMapPromise = (worker, meta, map, progress) => new Promise((resolve, reject) => {
@@ -8,8 +9,12 @@ const parseMapPromise = (worker, meta, map, progress) => new Promise((resolve, r
       worker.terminate();
       resolve(e.data.result);
     } else {
+      let error = e.data.error;
+      if (error instanceof ArrayBuffer || ArrayBuffer.isView(error)) {
+        error = new encoding.TextDecoder().decode(error);
+      }
       worker.terminate();
-      reject(e.data.error);
+      reject(error);
     }
   });
   worker.postMessage({meta, map});

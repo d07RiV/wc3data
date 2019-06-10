@@ -40,10 +40,10 @@ File gzip(File src) {
   return File();
 }
 
-#define WRITE_ALL_IMAGES 0
-#define GENERATE_META 0
+#define WRITE_ALL_IMAGES 1
+#define GENERATE_META 1
 #define USE_CDN 1
-#define GENERATE_MAPS 1
+#define GENERATE_MAPS 0
 #define TEST_MAP 0
 #define NUM_IMAGE_ARCHIVES 8
 
@@ -69,7 +69,7 @@ MemoryFile write_images(std::set<istring> const& names, CompositeLoader& loader)
     }
 
 #if WRITE_ALL_IMAGES
-    if (ext == ".mdx" || ext == ".slk" || ext == ".txt") {
+    if (ext == ".mdx" || ext == ".slk" || ext == ".txt" || ext == ".j") {
       File f = loader.load(fn.c_str());
       if (f) {
         mdxarc.add(hash, f, true);
@@ -96,11 +96,6 @@ MemoryFile write_images(std::set<istring> const& names, CompositeLoader& loader)
       File& imgf = imarc[hash % NUM_IMAGE_ARCHIVES].create(hash);
       img.write(imgf);
       listFile.printf("%s\n", fn.c_str());
-      imgf.seek(0);
-      for (auto& c : fn) {
-        if (c == ':') c = '/';
-      }
-      File(path::root() / "png" / path::path(fn) / path::title(fn) + ".png", "wb").copy(imgf);
 #endif
     }
   }
@@ -151,6 +146,20 @@ MemoryFile write_meta(std::set<istring> const& names, CompositeLoader& loader, F
 int main() {
   CompositeLoader loader;
 
+  Image img( R"(C:\Work\wc3data\src\files\assets\file_text.png)" );
+  Image::color_t c0( 192, 192, 192 );
+  int ld = 2, ll = 4, lr = 4, lf = 7, lt = 3, lb = 2;
+  auto bits = img.mutable_bits();
+  for ( int y = lt; y < img.height() - lb; y += ld )
+  {
+      for ( int x = ll; x < img.width() - ( y == lt ? lf : lr ); ++x )
+      {
+          bits[y * img.width() + x] = c0;
+      }
+  }
+  img.write( R"(C:\Work\wc3data\src\files\assets\file_text2.png)" );
+  return 0;
+
 #if !TEST_MAP
 #if USE_CDN
   auto build = CdnLoader::ngdp().version().build;
@@ -171,6 +180,13 @@ int main() {
   loader.add(std::make_shared<PrefixLoader>("War3.w3mod:", cdnloader));
   loader.add(cdnloader);
 
+  for ( auto name : std::vector<std::string>{ "12071.json", "x86/12071.json" } )
+  {
+      json::Value js;
+      json::parse( File( path::root() / name ), js );
+      json::write( File( path::root() / name, "wb" ), js );
+  } 
+  return 0;
 
   istring tset = "War3.w3mod:_Tilesets\\";
 

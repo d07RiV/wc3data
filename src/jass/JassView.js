@@ -7,6 +7,7 @@ import AppCache from 'data/cache';
 import Options from 'data/options';
 import { withAsync, OverlayNav, ScrollSaver, downloadBlob } from 'utils';
 import parseKeywords from './keywords';
+import encoding from 'text-encoding';
 
 import TextView from 'text/TextView';
 
@@ -146,7 +147,7 @@ class JassViewer extends React.Component {
 
   onDownload = () => {
     const text = this.props.lines.join("\n").replace("\n", "\r\n");
-    const encoded = new TextEncoder().encode(text);
+    const encoded = new encoding.TextEncoder().encode(text);
     const blob = new Blob([encoded], {type: "text/plain"});
     downloadBlob(blob, "war3map.j");
   }

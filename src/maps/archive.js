@@ -1,6 +1,7 @@
 import LoaderBinary from './ArchiveLoader.wasm';
 import LoaderModule from './ArchiveLoader.jscc';
 import pathHash, { makeUid } from 'data/hash';
+import encoding from 'text-encoding';
 
 class ArchiveLoader {
   images_ = {}
@@ -48,7 +49,7 @@ class ArchiveLoader {
     if (!result) {
       return null;
     }
-    return new TextDecoder().decode(result);
+    return new encoding.TextDecoder().decode(result);
   }
 
   loadImage(name) {
@@ -95,7 +96,7 @@ class ArchiveLoader {
     }
 
     const lines = [];
-    const dec = new TextDecoder();
+    const dec = new encoding.TextDecoder();
     let prev = 0;
     for (let i = 0; i < result.length; ++i) {
       if (result[i] === 0) {

@@ -1,15 +1,17 @@
 import React from 'react';
 import classNames from 'classnames';
-import pathHash, { makeUid, parseUid, equalUid } from 'data/hash';
+import pathHash, { parseUid, equalUid } from 'data/hash';
 import { Glyphicon } from 'react-bootstrap';
 import { downloadBlob, withAsync } from 'utils';
 import SlkFile from 'mdx/parsers/slk/file';
+import encoding from 'text-encoding';
 
 import FileSlkView from './FileSlk';
 import FileHexView from './FileHex';
 import FileTextView from './FileText';
 import FileImageView from './FileImage';
 import FileModelView from './FileModel';
+import FileJassView from './FileJass';
 
 const GameFileImage = ({image, name}) => (
   <div className="FileData">
@@ -33,8 +35,12 @@ class GameFileInner extends React.Component {
     if (ext === ".mdx") {
       this.model = true;
       state.panel = "model";
+    } else if (ext === ".j") {
+      const text = new encoding.TextDecoder().decode(data);
+      this.jass = text.split(/\r\n?|\n/);
+      state.panel = "jass";
     } else if (ext === ".txt" || ext === ".slk") {
-      const text = new TextDecoder().decode(data);
+      const text = new encoding.TextDecoder().decode(data);
       const lines = text.split(/\r\n?|\n/);
       this.text = [];
       const maxLength = 2048;
@@ -71,6 +77,7 @@ class GameFileInner extends React.Component {
     switch (panel) {
     case "hex": return <FileHexView data={this.props.data}/>;
     case "text": return <FileTextView lines={this.text} heights={this.textHeights}/>;
+    case "jass": return <FileJassView lines={this.jass}/>;
     case "model": return <FileModelView id={this.props.id}/>;
     case "slk": return <FileSlkView data={this.slk}/>;
     default: return null;
@@ -89,6 +96,7 @@ class GameFileInner extends React.Component {
           <li key="dl" className="tab-xbutton" onClick={this.onDownload}>Download <Glyphicon glyph="download-alt"/></li>
           {this.makePanel("hex", "Hex")}
           {this.text != null && this.makePanel("text", "Text")}
+          {this.jass != null && this.makePanel("jass", "JASS")}
           {this.slk != null && this.makePanel("slk", "SLK")}
           {!!this.model && this.makePanel("model", "Model")}
         </ul>

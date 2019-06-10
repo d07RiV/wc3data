@@ -1,4 +1,5 @@
 import React from 'react';
+import encoding from 'text-encoding';
 import { Modal, Button, Radio, FormGroup, ControlLabel, FormControl, Checkbox } from 'react-bootstrap';
 import objectTypes from './types';
 import { listObjectData, TileSets, DestructableCategory, DoodadCategory, TechList } from './ObjectCtx';
@@ -171,7 +172,7 @@ export default class DataDownload extends React.PureComponent {
     const comp = new DataCompiler(type, json, names);
     comp.process(this.props.data);
 
-    const encoded = new TextEncoder().encode(comp.output);
+    const encoded = new encoding.TextEncoder().encode(comp.output);
     const blob = new Blob([encoded], {type: "text/plain"});
     downloadBlob(blob, type + ".txt");
 
