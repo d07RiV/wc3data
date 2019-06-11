@@ -63,9 +63,14 @@ export default class War3MapViewer extends ModelViewer {
     this.cliffsReady = false;
     this.shadowsReady = false;
 
-    this.whenLoaded(['TerrainArt\\Terrain.slk', 'TerrainArt\\CliffTypes.slk', 'TerrainArt\\Water.slk']
-      .map((path) => this.loadGeneric(wc3PathSolver(path)[0], 'text', undefined, path)))
-      .then(([terrain, cliffTypes, water]) => {
+    const objects = mapData.objects();
+
+    Promise.all([
+      objects,
+      ...['TerrainArt\\Terrain.slk', 'TerrainArt\\CliffTypes.slk', 'TerrainArt\\Water.slk']
+        .map((path) => this.loadGeneric(wc3PathSolver(path)[0], 'text', undefined, path).whenLoaded())
+    ]).then(([obj, terrain, cliffTypes, water]) => {
+        this.terrainObjects = obj;
         this.terrainCliffsAndWaterLoaded = true;
         this.terrainData.load(terrain.data);
         this.cliffTypesData.load(cliffTypes.data);
@@ -82,8 +87,6 @@ export default class War3MapViewer extends ModelViewer {
     this.doodadsReady = false;
     this.uberSplats = [];
     this.uberSplatsReady = false;
-
-    const objects = mapData.objects();
 
     objects.then(obj => {
       this.doodadsAndDestructiblesLoaded = true;
