@@ -10,7 +10,7 @@ export default class TerrainModel {
    * @param {Array<number>} locations
    * @param {Array<number>} textures
    */
-  constructor(gl, arrayBuffer, locations, textures) {
+  constructor(gl, arrayBuffer, locations, textures, loader) {
     let parser = new MdxParser(arrayBuffer);
     let geoset = parser.geosets[0];
     let vertices = geoset.vertices;
@@ -19,6 +19,11 @@ export default class TerrainModel {
     let faces = geoset.faces;
     let normalsOffset = vertices.byteLength;
     let uvsOffset = normalsOffset + normals.byteLength;
+
+    if (!textures) {
+      let path = parser.textures[0].path;
+      this.texture = loader.load(path);
+    }
 
     let vertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
@@ -31,12 +36,13 @@ export default class TerrainModel {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, faceBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, faces, gl.STATIC_DRAW);
 
+    let instances = locations.length / 3;
     let texturesOffset = locations.length * 4;
     let locationAndTextureBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, locationAndTextureBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, texturesOffset + textures.length, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, texturesOffset + instances, gl.STATIC_DRAW);
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, new Float32Array(locations));
-    gl.bufferSubData(gl.ARRAY_BUFFER, texturesOffset, new Uint8Array(textures));
+    gl.bufferSubData(gl.ARRAY_BUFFER, texturesOffset, textures ? new Uint8Array(textures) : new Uint8Array(instances));
 
     /** @member {WebGLBuffer} */
     this.vertexBuffer = vertexBuffer;
@@ -53,7 +59,7 @@ export default class TerrainModel {
     /** @member {number} */
     this.texturesOffset = texturesOffset;
     /** @member {number} */
-    this.instances = locations.length / 3;
+    this.instances = instances;
   }
 
   /**
@@ -62,6 +68,13 @@ export default class TerrainModel {
    * @param {Object} attribs
    */
   render(gl, instancedArrays, attribs) {
+    if (this.texture) {
+      if (!this.texture.webglResource) {
+        return;
+      }
+      gl.bindTexture(gl.TEXTURE_2D, this.texture.webglResource);
+    }
+
     // Locations and textures.
     gl.bindBuffer(gl.ARRAY_BUFFER, this.locationAndTextureBuffer);
     gl.vertexAttribPointer(attribs.a_instancePosition, 3, gl.FLOAT, false, 12, 0);

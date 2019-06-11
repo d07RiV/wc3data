@@ -36,7 +36,7 @@ export default class MapHome extends React.Component {
   onMouseDown = e => {
     document.addEventListener("mousemove", this.onMouseMove, true);
     document.addEventListener("mouseup", this.onMouseUp, true);
-    this.dragPos = {x: e.clientX, y: e.clientY};
+    this.dragStart = this.dragPos = {x: e.clientX, y: e.clientY};
     this.dragButton = (e.ctrlKey ? 2 : 0);
     e.preventDefault();
   }
@@ -68,7 +68,13 @@ export default class MapHome extends React.Component {
     e.preventDefault();
   }
   onMouseUp = e => {
-    delete this.dragPos;
+    if (this.dragPos && this.viewer) {
+      if (this.dragButton === 0 && Math.abs(this.dragPos.x - this.dragStart.x) < 5 && Math.abs(this.dragPos.y - this.dragStart.y) < 5) {
+        let rc = this.canvas.getBoundingClientRect();
+        this.viewer.selectUnit(e.clientX - rc.left, e.clientY - rc.top);
+      }
+      delete this.dragPos;
+    }
     this.removeEvents();
     e.preventDefault();
   }

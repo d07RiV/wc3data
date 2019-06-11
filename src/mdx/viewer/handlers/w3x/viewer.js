@@ -49,6 +49,7 @@ export default class War3MapViewer extends ModelViewer {
 
     this.scene = this.addScene();
     this.camera = this.scene.camera;
+    this.units = [];
 
     this.waterIndex = 0;
     this.waterIncreasePerFrame = 0;
@@ -287,9 +288,6 @@ export default class War3MapViewer extends ModelViewer {
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, cliffHeightMap);
 
-      gl.activeTexture(gl.TEXTURE1);
-      gl.bindTexture(gl.TEXTURE_2D, this.cliffTextures[0].webglResource);
-
       if (this.cliffTextures.length > 1) {
         gl.activeTexture(gl.TEXTURE2);
         gl.bindTexture(gl.TEXTURE_2D, this.cliffTextures[1].webglResource);
@@ -303,7 +301,9 @@ export default class War3MapViewer extends ModelViewer {
       instancedArrays.vertexAttribDivisorANGLE(attribs.a_instanceTexture, 1);
 
       // Render the cliffs.
+      gl.activeTexture(gl.TEXTURE1);
       for (let cliff of this.cliffModels) {
+        gl.bindTexture(gl.TEXTURE_2D, this.cliffTextures[0].webglResource);
         cliff.render(gl, instancedArrays, attribs);
       }
 
@@ -347,7 +347,7 @@ export default class War3MapViewer extends ModelViewer {
 
       // Render the cliffs.
       for (let splat of this.uberSplatModels) {
-        splat.render(gl, attribs);
+        splat.render(gl, uniforms, attribs);
       }
     }
   }
@@ -475,6 +475,12 @@ export default class War3MapViewer extends ModelViewer {
 
     this.calculateRamps();
 
+    const source = this.mapMpq.get('war3map.doo');
+    if (!source) {
+      return;
+    }
+    this.doodads = new War3MapDoo(source.arrayBuffer());
+
     this.emit('tilesetloaded');
 
     if (this.terrainCliffsAndWaterLoaded) {
@@ -522,13 +528,8 @@ export default class War3MapViewer extends ModelViewer {
    * @param {*} modifications 
    */
   loadDoodadsAndDestructibles() {
-
-    const source = this.mapMpq.get('war3map.doo');
-    if (!source) {
-      return;
-    }
-    let doo = new War3MapDoo(source.arrayBuffer());
     let scene = this.scene;
+    let doo = this.doodads;
 
     // Collect the doodad and destructible data.
     for (let doodad of doo.doodads) {
@@ -623,10 +624,11 @@ export default class War3MapViewer extends ModelViewer {
       if (this.editorVersion < 0x17A8 && teamColor >= 12) {
         teamColor += 12;
       }
+      let row = null;
       if (unit.id === 'sloc') {
         path = 'Objects\\StartLocation\\StartLocation.mdx';
       } else {
-        let row = this.unitsData.find(row => row.id === unit.id);
+        row = this.unitsData.find(row => row.id === unit.id);
         if (!row) continue;
         row = row.data;
 
@@ -656,10 +658,10 @@ export default class War3MapViewer extends ModelViewer {
         if (splat) {
           let texture = `${splat.Dir}\\${splat.file}.blp`;
           if (!splats[texture]) {
-            splats[texture] = [];
+            splats[texture] = {locations: [], opacity: 1};
           }
           let x = unit.location[0], y = unit.location[1], s = splat.Scale;
-          splats[texture].push(x - s, y - s, x + s, y + s, 1.0);
+          splats[texture].locations.push(x - s, y - s, x + s, y + s, 1);
         }
 
         if (row.unitshadow && row.unitshadow !== "_") {
@@ -669,10 +671,10 @@ export default class War3MapViewer extends ModelViewer {
           let shadowW = parseFloat(row.shadoww || "0");
           let shadowH = parseFloat(row.shadowh || "0");
           if (!splats[texture]) {
-            splats[texture] = [];
+            splats[texture] = {locations: [], opacity: 0.5};
           }
           let x = unit.location[0] - shadowX, y = unit.location[1] - shadowY;
-          splats[texture].push(x, y, x + shadowW, y + shadowH, 0.5);
+          splats[texture].locations.push(x, y, x + shadowW, y + shadowH, 3);
         }
 
         if (row.buildingshadow && row.buildingshadow !== "_") {
@@ -697,6 +699,10 @@ export default class War3MapViewer extends ModelViewer {
           instance.setVertexColor([51, 51, 51]);
         }
 
+        if (row) {
+          this.units.push({unit, instance, location, radius: parseFloat(row.scale || "0") * 72});
+        }
+
         standOnRepeat(instance, animProps);
       } else {
         console.log('Unknown unit ID', unit.id, unit)
@@ -708,11 +714,13 @@ export default class War3MapViewer extends ModelViewer {
 
     let splatPromises = Object.entries(splats).map((splat) => {
       let path = splat[0];
-      let locations = splat[1];
+      let {locations, opacity} = splat[1];
 
       return this.load(path).whenLoaded()
         .then((texture) => {
-          return new SplatModel(this.gl, texture, locations, this.corners, this.centerOffset);
+          let splat = new SplatModel(this.gl, texture, locations, this.centerOffset);
+          splat.color[3] = opacity;
+          return splat;
         });
     });
 
@@ -990,6 +998,18 @@ export default class War3MapViewer extends ModelViewer {
       waterBuffer,
     };
 
+    for (let doodad in this.doodads.terrainDoodads) {
+      let row = this.terrainObjects.find(row => row.id === doodad.id);
+      if (!row) continue;
+      row = row.data;
+      let path = row.file + ".mdx";
+      if (!cliffs[path]) {
+        cliffs[path] = {locations: []};
+      }
+      let [x, y] = doodad.location;
+      cliffs[path].locations.push(x * 128.0 + centerOffset[0], y * 128.0 + centerOffset[1], (corners[y][x].layerHeight - 2) * 128.0);
+    }
+
     this.terrainReady = true;
     this.anyReady = true;
 
@@ -1002,7 +1022,7 @@ export default class War3MapViewer extends ModelViewer {
       return this.loadGeneric(this.mapPathSolver(path)[0], 'arrayBuffer', undefined, path)
         .whenLoaded()
         .then((resource) => {
-          return new TerrainModel(gl, resource.data, locations, textures);
+          return new TerrainModel(gl, resource.data, locations, textures, this);
         });
     });
 
@@ -1033,8 +1053,6 @@ export default class War3MapViewer extends ModelViewer {
       "LHAA",
       "LHBA",
     ];
-
-    let n = [];
 
     // Adjust terrain height inside ramps (set rampAdjust)
     for (let y = 1; y < rows - 1; ++y) {
@@ -1657,6 +1675,78 @@ export default class War3MapViewer extends ModelViewer {
         }
       }
     }
+  }
+
+  deselect() {
+    if (this.selModel) {
+      let idx = this.uberSplatModels.find(this.selModel);
+      if (idx >= 0) {
+        this.uberSplatModels.splice(idx, 1);
+      }
+      this.selModel = null;
+    }
+    this.selected = null;
+  }
+
+  doSelectUnit(unit) {
+    if (this.selected === unit) {
+      return;
+    }
+    this.deselect();
+
+    let row = this.unitsData.find(row => row.id === unit.id);
+    let selScale = parseFloat(row.scale || "0");
+    if (!selScale) return;
+    this.selected = unit;
+
+    let radius = 72 * selScale, path;
+    if (radius < 100) {
+      path = 'ReplaceableTextures\\Selection\\SelectionCircleSmall.blp';
+    } if (radius < 300) {
+      path = 'ReplaceableTextures\\Selection\\SelectionCircleMed.blp';
+    } else {
+      path = 'ReplaceableTextures\\Selection\\SelectionCircleLarge.blp';
+    }
+
+    let model = this.selModel = {};
+    this.load(path).whenLoaded().then(tex => {
+      if (this.selModel !== model) return;
+      let [x, y] = unit.location;
+      let z = parseFloat(row.selZ || "");
+      if (!z) z = 2;
+      this.selModel = new SplatModel(this.gl, tex, [x - radius, y - radius, x + radius, y + radius, z], this.centerOffset);
+      this.selModel.color = [0, 1, 0, 1];
+      this.uberSplatModels.push(this.selModel);
+    });
+  }
+
+  selectUnit(x, y) {
+    let ray = new Float32Array(6);
+    let dir = normalHeap1, pos = normalHeap2;
+    dir[0] = ray[3] - ray[0];
+    dir[1] = ray[4] - ray[1];
+    dir[2] = ray[5] - ray[2];
+    //ray[2] /= 2.0;
+    //dir[2] /= 2.0;
+    vec3.normalize(dir, dir);
+    let closest = vec3.create();
+    this.camera.screenToWorldRay(ray, [x, y]);
+
+    let entity = null;
+    let entDist = 1e+6;
+    this.units.forEach(ent => {
+      let {location, radius} = ent;
+      vec3.sub(pos, location, ray);
+      let dp = Math.max(0, vec3.dot(dir, pos));
+      if (dp > entDist) return;
+      vec3.scaleAndAdd(closest, ray, dir, dp);
+      if (vec3.sqrDist(closest, location) < radius) {
+        entity = ent;
+        entDist = dp;
+      }
+    });
+    this.doSelectUnit(entity && entity.unit);
+    return entity;
   }
 }
 

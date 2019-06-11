@@ -266,21 +266,19 @@ export default {
     uniform vec2 u_shadowPixel;
     uniform vec2 u_centerOffset;
 
-    attribute vec2 a_position;
-    attribute vec3 a_uv;
+    attribute vec3 a_position;
+    attribute vec2 a_uv;
 
-    varying vec3 v_uv;
+    varying vec2 v_uv;
     varying vec2 v_suv;
     varying vec3 v_normal;
-
-    const float depthBias = 1.0;
 
     const float normalDist = 0.25;
 
     void main() {
       vec2 halfPixel = u_pixel * 0.5;
 
-      vec2 base = (a_position - u_centerOffset) / 128.0;
+      vec2 base = (a_position.xy - u_centerOffset) / 128.0;
       float height = texture2D(u_heightMap, base * u_pixel + halfPixel).a;
 
       float hL = texture2D(u_heightMap, vec2(base - vec2(normalDist, 0.0)) * u_pixel + halfPixel).a;
@@ -292,26 +290,26 @@ export default {
       v_uv = a_uv;
       v_suv = base / u_size;
 
-      gl_Position = u_mvp * vec4(a_position, height * 128.0 + depthBias, 1.0);
+      gl_Position = u_mvp * vec4(a_position.xy, height * 128.0 + a_position.z, 1.0);
     }
   `,
   fsUberSplat: `
     uniform sampler2D u_texture;
     uniform sampler2D u_shadowMap;
+    uniform vec4 u_color;
 
-    varying vec3 v_uv;
+    varying vec2 v_uv;
     varying vec2 v_suv;
     varying vec3 v_normal;
 
     const vec3 lightDirection = normalize(vec3(-0.3, -0.3, 0.25));
 
     void main() {
-      vec4 color = texture2D(u_texture, clamp(v_uv.xy, 0.0, 1.0)).rgba;
+      vec4 color = texture2D(u_texture, clamp(v_uv, 0.0, 1.0)).rgba * u_color;
 
       float shadow = texture2D(u_shadowMap, v_suv).a;
       color.xyz *= clamp(dot(v_normal, lightDirection) + 0.45, 0.0, 1.0);
       color.xyz *= 1.0 - shadow;
-      color.w *= v_uv.z;
 
       gl_FragColor = color;
     }

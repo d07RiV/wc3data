@@ -8,9 +8,10 @@ export default class SplatModel {
    * @param {Array<number>} locations
    * @param {Array<number>} textures
    */
-  constructor(gl, texture, locations, corners, centerOffset) {
+  constructor(gl, texture, locations, centerOffset) {
     this.texture = texture;
     this.batches = [];
+    this.color = [255, 255, 255, 255];
 
     const MaxVertices = 65000;
 
@@ -19,7 +20,7 @@ export default class SplatModel {
     let indices = [];
     let instances = locations.length / 5;
     for (let idx = 0; idx < instances; ++idx) {
-      let [x0, y0, x1, y1, opacity] = locations.slice(idx * 5, idx * 5 + 5);
+      let [x0, y0, x1, y1, zoffs] = locations.slice(idx * 5, idx * 5 + 5);
 
       let ix0 = Math.floor((x0 - centerOffset[0]) / 128.0);
       let ix1 = Math.ceil((x1 - centerOffset[0]) / 128.0);
@@ -44,8 +45,8 @@ export default class SplatModel {
         let y = iy * 128.0 + centerOffset[1];
         for (let ix = ix0; ix <= ix1; ++ix) {
           let x = ix * 128.0 + centerOffset[0];
-          vertices.push(x, y);
-          uvs.push((x - x0) / (x1 - x0), 1.0 - (y - y0) / (y1 - y0), opacity);
+          vertices.push(x, y, zoffs);
+          uvs.push((x - x0) / (x1 - x0), 1.0 - (y - y0) / (y1 - y0));
         }
       }
       for (let i = 0; i < iy1 - iy0; ++i) {
@@ -86,16 +87,17 @@ export default class SplatModel {
    * @param {WebGLRenderingContext} gl
    * @param {Object} attribs
    */
-  render(gl, attribs) {
+  render(gl, uniforms, attribs) {
     // Texture
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, this.texture.webglResource);
+    gl.uniform4fv(uniforms.u_color, this.color);
 
     for (let b of this.batches) {
       // Vertices
       gl.bindBuffer(gl.ARRAY_BUFFER, b.vertexBuffer);
-      gl.vertexAttribPointer(attribs.a_position, 2, gl.FLOAT, false, 8, 0);
-      gl.vertexAttribPointer(attribs.a_uv, 3, gl.FLOAT, false, 12, b.uvsOffset);
+      gl.vertexAttribPointer(attribs.a_position, 3, gl.FLOAT, false, 12, 0);
+      gl.vertexAttribPointer(attribs.a_uv, 2, gl.FLOAT, false, 8, b.uvsOffset);
 
       // Faces.
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b.faceBuffer);
