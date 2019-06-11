@@ -199,13 +199,14 @@ export default class War3MapViewer extends ModelViewer {
       let shader = this.waterShader;
       let uniforms = shader.uniforms;
       let attribs = shader.attribs;
+      let mapBounds = this.mapBounds;
       let {columns, rows, centerOffset, vertexBuffer, faceBuffer, heightMap, instanceBuffer, instanceCount, waterHeightMap, waterBuffer, heightMapSize} = this.terrainRenderData;
       let instanceAttrib = attribs.a_InstanceID;
       let positionAttrib = attribs.a_position;
       let isWaterAttrib = attribs.a_isWater;
 
       gl.enable(gl.BLEND);
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
       webgl.useShaderProgram(shader);
 
@@ -221,7 +222,10 @@ export default class War3MapViewer extends ModelViewer {
       gl.uniform4fv(uniforms.u_maxDeepColor, this.maxDeepColor);
       gl.uniform4fv(uniforms.u_minDeepColor, this.minDeepColor);
       gl.uniform4fv(uniforms.u_maxShallowColor, this.maxShallowColor);
-      gl.uniform4fv(uniforms.u_minShallowColor, this.minShallowColor);
+      gl.uniform4f(uniforms.u_mapBounds, mapBounds[0] * 128.0 + centerOffset[0],
+        mapBounds[2] * 128.0 + centerOffset[1],
+        (columns - mapBounds[1] - 1) * 128.0 + centerOffset[0],
+        (rows - mapBounds[3] - 1) * 128.0 + centerOffset[1]);
 
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, heightMap);
@@ -440,6 +444,8 @@ export default class War3MapViewer extends ModelViewer {
     let w3i = new War3MapW3i(this.mapMpq.get('war3map.w3i').arrayBuffer());
     this.tileset = w3i.tileset;
     this.editorVersion = w3i.editorVersion;
+    this.mapBounds = w3i.cameraBoundsComplements;
+    this.mapFlags = w3i.flags;
 
     this.emit('maploaded');
 
@@ -575,6 +581,9 @@ export default class War3MapViewer extends ModelViewer {
         instance.rotateLocal(quat.setAxisAngle(quat.create(), VEC3_UNIT_Z, doodad.angle));
         instance.scale(doodad.scale);
         instance.setScene(scene);
+        if (!this.inPlayableArea(doodad.location[0], doodad.location[1])) {
+          instance.setVertexColor([51, 51, 51]);
+        }
   
         standOnRepeat(instance);
       });
@@ -681,6 +690,9 @@ export default class War3MapViewer extends ModelViewer {
         instance.scale(scale);
         instance.setTeamColor(teamColor);
         instance.setScene(scene);
+        if (!this.inPlayableArea(location[0], location[1])) {
+          instance.setVertexColor([51, 51, 51]);
+        }
 
         standOnRepeat(instance, animProps);
       } else {
@@ -807,6 +819,8 @@ export default class War3MapViewer extends ModelViewer {
         cliffHeights[index] = bottomLeft.groundHeight;
         cornerHeights[index] = bottomLeft.groundHeight + bottomLeft.layerHeight + (bottomLeft.rampAdjust || 0) - 2;
         waterHeights[index] = bottomLeft.waterHeight;
+
+        bottomLeft.depth = bottomLeft.water ? this.waterHeightOffset + bottomLeft.waterHeight - cornerHeights[index] : 0;
 
         if (y < rows - 1 && x < columns - 1) {
           // Water can be used with cliffs and normal corners, so store water state regardless.
@@ -975,6 +989,8 @@ export default class War3MapViewer extends ModelViewer {
 
     this.terrainReady = true;
     this.anyReady = true;
+
+    this.createWaves();
 
     let cliffPromises = Object.entries(cliffs).map((cliff) => {
       let path = cliff[0];
@@ -1465,6 +1481,13 @@ export default class War3MapViewer extends ModelViewer {
     return 0;
   }
 
+  inPlayableArea(x, y) {
+    x = (x - this.centerOffset[0]) / 128.0;
+    y = (y - this.centerOffset[1]) / 128.0;
+    return x >= this.mapBounds[0] && x < this.mapSize[0] - this.mapBounds[1] - 1 &&
+      y >= this.mapBounds[2] && y < this.mapSize[1] - this.mapBounds[3] - 1;
+  }
+
   addShadow(file, x, y) {
     if (!this.shadows[file]) {
       let path = `ReplaceableTextures\\Shadows\\${file}.blp`;
@@ -1483,17 +1506,17 @@ export default class War3MapViewer extends ModelViewer {
     columns = (columns - 1) * 4;
     rows = (rows - 1) * 4;
 
-    let shadowData;
+    const shadowSize = columns * rows;
+    const shadowData = new Uint8Array(columns * rows);
     const source = this.mapMpq.get('war3map.shd');
     if (source) {
       let buffer = source.arrayBuffer();
-      if (buffer.byteLength >= columns * rows) {
-        shadowData = new Uint8Array(source.arrayBuffer(), 0, columns * rows);
-      } else {
-        shadowData = new Uint8Array(columns * rows);
+      if (buffer.byteLength >= shadowSize) {
+        buffer = new Uint8Array(buffer);
+        for (let i = 0; i < shadowSize; ++i) {
+          shadowData[i] = buffer[i] / 2;
+        }
       }
-    } else {
-      shadowData = new Uint8Array(columns * rows);
     }
 
     for (let [file, texture] of Object.entries(this.shadowTextures)) {
@@ -1515,10 +1538,30 @@ export default class War3MapViewer extends ModelViewer {
               continue;
             }
             if (data[(y * width + x) * 4 + 3]) {
-              shadowData[(y0 - y) * columns + x0 + x] = 255;
+              shadowData[(y0 - y) * columns + x0 + x] = 128;
             }
           }
         }
+      }
+    }
+
+    const outsideArea = 204;
+    let x0 = this.mapBounds[0] * 4, x1 = (this.mapSize[0] - this.mapBounds[1] - 1) * 4,
+        y0 = this.mapBounds[2] * 4, y1 = (this.mapSize[1] - this.mapBounds[3] - 1) * 4;
+    for (let y = 0; y < rows; ++y) {
+      for (let x = 0; x < x0; ++x) {
+        shadowData[y * columns + x] = outsideArea;
+      }
+      for (let x = x1; x < columns; ++x) {
+        shadowData[y * columns + x] = outsideArea;
+      }
+    }
+    for (let x = x0; x < x1; ++x) {
+      for (let y = 0; y < y0; ++y) {
+        shadowData[y * columns + x] = outsideArea;
+      }
+      for (let y = y1; y < rows; ++y) {
+        shadowData[y * columns + x] = outsideArea;
       }
     }
 
@@ -1532,6 +1575,85 @@ export default class War3MapViewer extends ModelViewer {
     this.shadowMap = shadowMap;
 
     this.shadowsReady = true;
+  }
+
+  createWaves() {
+    let [columns, rows] = this.mapSize;
+    let corners = this.corners;
+    let wavesDepth = 25 / 128;
+    let centerOffset = this.centerOffset;
+    let waterRow = this.waterData.getRow(`${this.tileset}Sha`);
+
+    let wavesCliff = (this.mapFlags & 0x0800);
+    let wavesRolling = (this.mapFlags & 0x1000);
+
+    let shoreline = `${waterRow.shoreDir}\\${waterRow.shoreSFile}\\${waterRow.shoreSFile}0.mdx`;
+    let outsideCorner = `${waterRow.shoreDir}\\${waterRow.shoreOCFile}\\${waterRow.shoreOCFile}0.mdx`;
+    let insideCorner = `${waterRow.shoreDir}\\${waterRow.shoreICFile}\\${waterRow.shoreICFile}0.mdx`;
+
+    let rotation = (a, b, c) => {
+      if (a) return -3 * Math.PI / 4;
+      if (b) return -Math.PI / 4;
+      if (c) return Math.PI / 4;
+      return 3 * Math.PI / 4;
+    };
+    let rotation2 = (a, b, c, d) => {
+      if (a && b) return -Math.PI / 2;
+      if (b && c) return 0;
+      if (c && d) return Math.PI / 2;
+      if (a && d) return Math.PI;
+      return null;
+    };
+
+    let location = new Float32Array(3);
+    let models = {};
+
+    let addInstance = (path, rotation) => {
+      if (!models[path]) {
+        models[path] = this.load(path);
+      }
+      let instance = models[path].addInstance();
+      instance.move(location);
+      instance.rotateLocal(quat.setAxisAngle(quat.create(), VEC3_UNIT_Z, rotation));
+      instance.setScene(this.scene);
+      if (!this.inPlayableArea(location[0], location[1])) {
+        instance.setVertexColor([51, 51, 51]);
+      }
+      standOnRepeat(instance);
+    };
+
+    for (let y = 0; y < rows - 1; ++y) {
+      for (let x = 0; x < columns - 1; ++x) {
+        let a = corners[y][x], b = corners[y][x + 1], c = corners[y + 1][x + 1], d = corners[y + 1][x];
+        if (a.water || b.water || c.water || c.water) {
+          let isCliff = (a.layerHeight !== b.layerHeight || a.layerHeight !== c.layerHeight || a.layerHeight !== d.layerHeight);
+          if (isCliff && !wavesCliff) {
+            continue;
+          }
+          if (!isCliff && !wavesRolling) {
+            continue;
+          }
+          let ad = (a.depth > wavesDepth ? 1 : 0);
+          let bd = (b.depth > wavesDepth ? 1 : 0);
+          let cd = (c.depth > wavesDepth ? 1 : 0);
+          let dd = (d.depth > wavesDepth ? 1 : 0);
+          let count = (ad + bd + cd + dd);
+          location[0] = x * 128.0 + centerOffset[0] + 64.0;
+          location[1] = y * 128.0 + centerOffset[1] + 64.0;
+          location[2] = ((a.waterHeight + b.waterHeight + c.waterHeight + d.waterHeight) / 4.0 + this.waterHeightOffset) * 128.0 + 1.0;
+          if (count === 1) {
+            addInstance(insideCorner, rotation(ad, bd, cd, dd));
+          } else if (count === 2) {
+            let rot = rotation2(ad, bd, cd, dd);
+            if (rot != null) {
+              addInstance(shoreline, rot);
+            }
+          } else if (count === 3) {
+            addInstance(outsideCorner, rotation(!ad, !bd, !cd, !dd) + Math.PI);
+          }
+        }
+      }
+    }
   }
 }
 

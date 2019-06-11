@@ -85,7 +85,7 @@ class GameFileInner extends React.Component {
   }
 
   onDownload = () => {
-    const blob = new Blob([this.binary], {type: "application/octet-stream"});
+    const blob = new Blob([this.props.data], {type: "application/octet-stream"});
     downloadBlob(blob, this.props.name);
   }
 

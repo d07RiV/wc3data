@@ -40,8 +40,8 @@ File gzip(File src) {
   return File();
 }
 
-#define WRITE_ALL_IMAGES 1
-#define GENERATE_META 1
+#define WRITE_ALL_IMAGES 0
+#define GENERATE_META 0
 #define USE_CDN 1
 #define GENERATE_MAPS 0
 #define TEST_MAP 0
@@ -64,8 +64,10 @@ MemoryFile write_images(std::set<istring> const& names, CompositeLoader& loader)
     }
     uint64 hash = pathHash(canonPath.c_str());
 
+    bool isMod = false;
     if (istring(std::string(fn).substr(1, 7)) == istring(".w3mod:") && isalpha((unsigned char) fn[0])) {
       hash = pathHash(canonPath.c_str() + 8) + (fn[0] - 'A' + 1);
+      isMod = true;
     }
 
 #if WRITE_ALL_IMAGES
@@ -90,7 +92,7 @@ MemoryFile write_images(std::set<istring> const& names, CompositeLoader& loader)
     Image img(f);
     if (img) {
       if (fn.find("replaceabletextures\\") == 0) {
-        images.add(hash, img);
+        images.add(pathHash(fn.c_str()), img);
       }
 #if WRITE_ALL_IMAGES
       File& imgf = imarc[hash % NUM_IMAGE_ARCHIVES].create(hash);
@@ -146,19 +148,6 @@ MemoryFile write_meta(std::set<istring> const& names, CompositeLoader& loader, F
 int main() {
   CompositeLoader loader;
 
-  Image img( R"(C:\Work\wc3data\src\files\assets\file_text.png)" );
-  Image::color_t c0( 192, 192, 192 );
-  int ld = 2, ll = 4, lr = 4, lf = 7, lt = 3, lb = 2;
-  auto bits = img.mutable_bits();
-  for ( int y = lt; y < img.height() - lb; y += ld )
-  {
-      for ( int x = ll; x < img.width() - ( y == lt ? lf : lr ); ++x )
-      {
-          bits[y * img.width() + x] = c0;
-      }
-  }
-  img.write( R"(C:\Work\wc3data\src\files\assets\file_text2.png)" );
-  return 0;
 
 #if !TEST_MAP
 #if USE_CDN
@@ -167,6 +156,8 @@ int main() {
   //build = "34872da6a3842639ff2d2a86ee9b3755"; // 1.30.2.11024
   //build = "e4473116a14ec84d2e00c46af4c3f42f"; // 1.30.2.11029
   //build = "8741363b75f97365ff584fda9d4b804f"; // 1.30.2.11065
+  build = "7c45731c22f6bf4ff30035ab9d905745"; // 1.30.4.11274
+  // 1.31.0.12071
   auto cdnloader = std::make_shared<CdnLoader>(build);
 
   //auto mpqloader = std::make_shared<mpq::Archive>(File(R"(G:\Games\Warcraft III\Maps\Download\DotA v6.79c.w3x)"));
@@ -178,15 +169,10 @@ int main() {
   loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Balance\\Custom_V1.w3mod:", cdnloader));
   loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Tilesets\\", cdnloader));
   loader.add(std::make_shared<PrefixLoader>("War3.w3mod:", cdnloader));
+  //loader.add(std::make_shared<PrefixLoader>("enUS-", cdnloader));
+  //loader.add(std::make_shared<PrefixLoader>("enUS-War3Local.mpq:", cdnloader));
+  //loader.add(std::make_shared<PrefixLoader>("War3.mpq:", cdnloader));
   loader.add(cdnloader);
-
-  for ( auto name : std::vector<std::string>{ "12071.json", "x86/12071.json" } )
-  {
-      json::Value js;
-      json::parse( File( path::root() / name ), js );
-      json::write( File( path::root() / name, "wb" ), js );
-  } 
-  return 0;
 
   istring tset = "War3.w3mod:_Tilesets\\";
 
@@ -249,13 +235,13 @@ int main() {
 
   json::Value versions;
   json::parse(File(path::root() / "versions.json"), versions);
-  versions[std::to_string(info.build)] = info.version;
+  versions["versions"][std::to_string(info.build)] = info.version;
   json::write(File(path::root() / "versions.json", "wb"), versions);
 
   Logger::log("Wrote %s", info.version.c_str());
 
 #if GENERATE_MAPS
-  json::Value mlist;
+  json::Value& mlist = versions["custom"];
   std::vector<std::string> mapnames;
   for (auto fn : names) {
     istring ext = path::ext(fn);
@@ -286,7 +272,7 @@ int main() {
       mdata["desc"] = desc;
     }
   }
-  json::write(File("maps.json", "wb"), mlist);
+  json::write(File(path::root() / "versions.json", "wb"), versions);
 #endif
 
 #else

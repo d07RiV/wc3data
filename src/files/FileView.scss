@@ -201,6 +201,13 @@
     .error {
       color: #f00;
     }
+    .success {
+      color: #0f0;
+    }
+    .expiring {
+      opacity: 0;
+      transition: opacity 1s;
+    }
   }
   .controls {
     position: absolute;

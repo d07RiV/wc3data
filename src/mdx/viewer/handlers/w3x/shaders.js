@@ -81,7 +81,6 @@ export default {
     varying vec3 v_normal;
 
     const vec3 lightDirection = normalize(vec3(-0.3, -0.3, 0.25));
-    const float shadowStrength = 0.5;
 
     vec4 blend(vec4 color, vec2 uv) {
       vec4 texel = texture2D(u_tilesets, uv).rgba;
@@ -97,7 +96,7 @@ export default {
 
       float shadow = texture2D(u_shadowMap, v_suv).a;
       color.xyz *= clamp(dot(v_normal, lightDirection) + 0.45, 0.0, 1.0);
-      color.xyz *= 1.0 - shadow * shadowStrength;
+      color.xyz *= 1.0 - shadow;
 
       gl_FragColor = color;
     }
@@ -121,6 +120,7 @@ export default {
     attribute float a_isWater;
 
     varying vec2 v_uv;
+    varying vec2 v_position;
     varying vec4 v_color;
 
     const float minDepth = 10.0 / 128.0;
@@ -129,10 +129,11 @@ export default {
 
     void main() {
       if (a_isWater > 0.5) {
-        v_uv = (vec2(mod(u_tileIndex, 16.0), floor(u_tileIndex / 16.0)) + a_position) / vec2(16.0, 3.0);
+        vec2 corner = vec2(mod(a_InstanceID, u_size.x), floor(a_InstanceID / u_size.x));
+        vec2 texPosition = (mod(corner, 2.0) + a_position) * 0.5;
+        v_uv = (vec2(mod(u_tileIndex, 16.0), floor(u_tileIndex / 16.0)) + texPosition) / vec2(16.0, 3.0);
 
         vec2 halfPixel = vec2(0.5, 0.5) * u_pixel;
-        vec2 corner = vec2(mod(a_InstanceID, u_size.x), floor(a_InstanceID / u_size.x));
         vec2 base = corner + a_position;
         float height = texture2D(u_heightMap, base * u_pixel + halfPixel).a;
         float waterHeight = texture2D(u_waterHeightMap, base * u_pixel + halfPixel).a + u_offsetHeight;
@@ -146,7 +147,8 @@ export default {
           v_color = mix(u_minDeepColor, u_maxDeepColor, value) / 255.0;
         }
 
-        gl_Position = u_mvp * vec4(base * 128.0 + u_offset, waterHeight * 128.0, 1.0);
+        v_position = base * 128.0 + u_offset;
+        gl_Position = u_mvp * vec4(v_position, waterHeight * 128.0, 1.0);
       } else {
         v_uv = vec2(0.0);
         v_color = vec4(0.0);
@@ -158,11 +160,16 @@ export default {
   fsWater: `
     uniform sampler2D u_waterMap;
 
+    uniform vec4 u_mapBounds;
+
+    varying vec2 v_position;
     varying vec2 v_uv;
     varying vec4 v_color;
 
     void main() {
-      gl_FragColor = texture2D(u_waterMap, v_uv).rgba * v_color;
+      vec2 d2 = min(v_position - u_mapBounds.xy, u_mapBounds.zw - v_position);
+      float d1 = clamp(min(d2.x, d2.y) / 64.0 + 1.0, 0.0, 1.0) * 0.8 + 0.2;
+      gl_FragColor = texture2D(u_waterMap, v_uv).rgba * vec4(v_color.rgb * d1, v_color.a);
     }
   `,
   vsCliffs: `
@@ -178,11 +185,14 @@ export default {
     attribute vec3 a_instancePosition;
     attribute float a_instanceTexture;
 
-    varying vec3 v_normal;
+    varying vec3 v_normal1;
+    varying vec3 v_normal2;
+    varying float v_height;
     varying vec2 v_uv;
     varying vec2 v_suv;
     varying float v_texture;
-    varying vec3 v_position;
+
+    const float normalDist = 1.0;
 
     void main() {
       // Half of a pixel in the cliff height map.
@@ -195,13 +205,20 @@ export default {
 
       float height = texture2D(u_heightMap, corner * u_pixel + halfPixel).a;
 
-      v_normal = vec3(a_normal.y, -a_normal.x, a_normal.z);
+      float hL = texture2D(u_heightMap, vec2(corner - vec2(normalDist, 0.0)) * u_pixel + halfPixel).a;
+      float hR = texture2D(u_heightMap, vec2(corner + vec2(normalDist, 0.0)) * u_pixel + halfPixel).a;
+      float hD = texture2D(u_heightMap, vec2(corner - vec2(0.0, normalDist)) * u_pixel + halfPixel).a;
+      float hU = texture2D(u_heightMap, vec2(corner + vec2(0.0, normalDist)) * u_pixel + halfPixel).a;
+
+      v_normal1 = normalize(vec3(hL - hR, hD - hU, normalDist * 2.0));
+      v_normal2 = vec3(a_normal.y, -a_normal.x, a_normal.z);
+      v_height = position.z / 128.0;
+
       v_uv = a_uv;
       v_suv = corner / u_size;
       v_texture = a_instanceTexture;
-      v_position = position + vec3(a_instancePosition.xy, a_instancePosition.z + height * 128.0);
 
-      gl_Position = u_mvp * vec4(v_position, 1.0);
+      gl_Position = u_mvp * vec4(position + vec3(a_instancePosition.xy, a_instancePosition.z + height * 128.0), 1.0);
     }
   `,
   fsCliffs: `
@@ -210,14 +227,14 @@ export default {
     uniform sampler2D u_texture2;
     uniform sampler2D u_shadowMap;
 
-    varying vec3 v_normal;
+    varying vec3 v_normal1;
+    varying vec3 v_normal2;
+    varying float v_height;
     varying vec2 v_uv;
     varying vec2 v_suv;
     varying float v_texture;
-    varying vec3 v_position;
 
     const vec3 lightDirection = normalize(vec3(-0.3, -0.3, 0.25));
-    const float shadowStrength = 0.5;
 
     vec4 sample(int texture, vec2 uv) {
       if (texture == 0) {
@@ -230,12 +247,13 @@ export default {
     void main() {
       vec4 color = sample(int(v_texture+0.01), v_uv).rgba;
 
-      vec3 faceNormal = cross(dFdx(v_position), dFdy(v_position));
-      vec3 normal = normalize(v_normal);//(faceNormal + v_normal) * 0.5);
+      float height = 2.0 * (fract(v_height) - 0.5);
+      height = height * height;
+      vec3 normal = normalize(mix(v_normal2, v_normal1, height));
 
       float shadow = texture2D(u_shadowMap, v_suv).a;
       color.xyz *= clamp(dot(normal, lightDirection) + 0.45, 0.1, 1.0);
-      color.xyz *= 1.0 - shadow * shadowStrength;
+      color.xyz *= 1.0 - shadow;
 
       gl_FragColor = color;
     }
@@ -286,14 +304,13 @@ export default {
     varying vec3 v_normal;
 
     const vec3 lightDirection = normalize(vec3(-0.3, -0.3, 0.25));
-    const float shadowStrength = 0.5;
 
     void main() {
       vec4 color = texture2D(u_texture, clamp(v_uv.xy, 0.0, 1.0)).rgba;
 
       float shadow = texture2D(u_shadowMap, v_suv).a;
       color.xyz *= clamp(dot(v_normal, lightDirection) + 0.45, 0.0, 1.0);
-      color.xyz *= 1.0 - shadow * shadowStrength;
+      color.xyz *= 1.0 - shadow;
       color.w *= v_uv.z;
 
       gl_FragColor = color;

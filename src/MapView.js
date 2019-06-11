@@ -12,7 +12,7 @@ const f32rot = new Float32Array(1);
 export default class MapHome extends React.Component {
   static contextType = AppCache.DataContext;
   state = {
-    errors: [],
+    notifications: [],
   }
 
   yaw = 0;
@@ -116,7 +116,46 @@ export default class MapHome extends React.Component {
   }
 
   componentWillUnmount() {
+    if (this.frame) {
+      cancelAnimationFrame(this.frame);
+      delete this.frame;
+    }
     this.unmounted = true;
+  }
+
+  addNotification(text, type, expires) {
+    this.setState(({notifications}) => {
+      let line = {text, type};
+      notifications = [...notifications, line];
+      if (expires > 1000) {
+        setTimeout(() => {
+          if (this.unmounted) return;
+          this.setState(({notifications}) => {
+            let idx = notifications.indexOf(line);
+            if (idx >= 0) {
+              notifications = notifications.slice();
+              line = {...line, expiring: true};
+              notifications[idx] = line;
+            }
+            return {notifications};
+          });
+        }, expires - 1000);
+      } else {
+        line.expiring = true;
+      }
+      setTimeout(() => {
+        if (this.unmounted) return;
+        this.setState(({notifications}) => {
+          let idx = notifications.indexOf(line);
+          if (idx >= 0) {
+            notifications = notifications.slice();
+            notifications.splice(idx, 1);
+          }
+          return {notifications};
+        });
+      }, expires);
+      return {notifications};
+    });
   }
   
   componentDidMount() {
@@ -141,22 +180,14 @@ export default class MapHome extends React.Component {
     };
 
     this.viewer = new ModelViewer.viewer.handlers.w3x.MapViewer(canvas, resolvePath, data);
-    this.viewer.gl.clearColor(0.3, 0.3, 0.3, 1);
+    this.viewer.gl.clearColor(0, 0, 0, 1);
     this.viewer.on('error', (target, error, reason) => {
       if (error === "FailedToFetch") {
-        const message = `Failed to load ${target.path}`;
-        this.setState(({errors}) => ({errors: [...errors, message]}));
-        setTimeout(() => {
-          if (this.unmounted) return;
-          this.setState(({errors}) => {
-            let idx = errors.indexOf(message);
-            if (idx >= 0) {
-              errors = errors.splice(idx, 1);
-            }
-            return {errors};
-          });
-        }, 5000);
+        this.addNotification(`Failed to load ${target.path}`, 'error', 5000);
       }
+    });
+    this.viewer.on('idle', () => {
+      this.addNotification('Loading complete!', 'success', 5000);
     });
     this.scene = this.viewer.scene;
 
@@ -166,7 +197,7 @@ export default class MapHome extends React.Component {
   }
 
   render() {
-    const { errors } = this.state;
+    const { notifications } = this.state;
     return (
       <div className="ModelPage">
         <div className="FileModel">
@@ -183,7 +214,7 @@ export default class MapHome extends React.Component {
             )}
           </AutoSizer>
           <ul className="log">
-            {errors.map((err, idx) => <li key={idx} className="error">{err}</li>)}
+            {notifications.map(({text, type, expiring}, idx) => <li key={idx} className={type + (expiring ? " expiring" : "")}>{text}</li>)}
           </ul>
           <div className="credits">
             Model viewer by <a href="https://github.com/flowtsohg/mdx-m3-viewer" target="_blank">flowtsohg@github</a>

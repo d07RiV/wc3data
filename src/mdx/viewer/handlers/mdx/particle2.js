@@ -1,4 +1,4 @@
-import {vec3, vec4, quat} from 'gl-matrix';
+import {vec3, vec4, mat3, quat} from 'gl-matrix';
 import {VEC3_UNIT_Z} from '../../../common/gl-matrix-addon';
 import {degToRad, randomInRange, lerp} from '../../../common/math';
 import {uint8ToUint24} from '../../../common/typecast';
@@ -13,6 +13,8 @@ let latitudeHeap = new Float32Array(1);
 let variationHeap = new Float32Array(1);
 let speedHeap = new Float32Array(1);
 let gravityHeap = new Float32Array(1);
+let mat3Heap = new Float32Array(9);
+let vec3Heap = [vec3.create(), vec3.create(), vec3.create(), vec3.create(), vec3.create(), vec3.create()];
 
 /**
  * A type 2 particle.
@@ -233,6 +235,22 @@ export default class Particle2 {
       let px = worldLocation[0];
       let py = worldLocation[1];
       let pz = worldLocation[2];
+
+      if (modelObject.xYQuad) {
+        let vx = vec3Heap[4], vy = vec3Heap[5];
+        vx[0] = velocity[0];
+        vx[1] = velocity[1];
+        vx[2] = 0;
+        vec3.normalize(vx, vx);
+        vy[0] = -vx[1];
+        vy[1] = vx[0];
+        vy[2] = 0;
+        vec3.add(vec3Heap[2], vx, vy);
+        vec3.sub(vec3Heap[1], vy, vx);
+        vec3.negate(vec3Heap[0], vec3Heap[2]);
+        vec3.negate(vec3Heap[3], vec3Heap[1]);
+        vectors = vec3Heap;
+      }
 
       let pv1 = vectors[0];
       let pv2 = vectors[1];

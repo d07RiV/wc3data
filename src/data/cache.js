@@ -139,7 +139,7 @@ class MapData {
   }
 
   iconByName(name) {
-    return this.icon(pathHash(name, true));
+    return this.icon(pathHash(name));
   }
 }
 
@@ -257,7 +257,7 @@ export default class AppCache extends Cache {
     }
   }
   iconByName(name) {
-    return this.icon(pathHash(name, true));
+    return this.icon(pathHash(name));
   }
 
   image(name, tileset) {
