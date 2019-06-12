@@ -71,7 +71,7 @@ export default class War3MapViewer extends ModelViewer {
       ...['TerrainArt\\Terrain.slk', 'TerrainArt\\CliffTypes.slk', 'TerrainArt\\Water.slk']
         .map((path) => this.loadGeneric(wc3PathSolver(path)[0], 'text', undefined, path).whenLoaded())
     ]).then(([obj, terrain, cliffTypes, water]) => {
-        this.terrainObjects = obj;
+        this.terrainObjects = obj.objects;
         this.terrainCliffsAndWaterLoaded = true;
         this.terrainData.load(terrain.data);
         this.cliffTypesData.load(cliffTypes.data);
@@ -288,6 +288,9 @@ export default class War3MapViewer extends ModelViewer {
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, cliffHeightMap);
 
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, this.cliffTextures[0].webglResource);
+
       if (this.cliffTextures.length > 1) {
         gl.activeTexture(gl.TEXTURE2);
         gl.bindTexture(gl.TEXTURE_2D, this.cliffTextures[1].webglResource);
@@ -301,10 +304,8 @@ export default class War3MapViewer extends ModelViewer {
       instancedArrays.vertexAttribDivisorANGLE(attribs.a_instanceTexture, 1);
 
       // Render the cliffs.
-      gl.activeTexture(gl.TEXTURE1);
       for (let cliff of this.cliffModels) {
-        gl.bindTexture(gl.TEXTURE_2D, this.cliffTextures[0].webglResource);
-        cliff.render(gl, instancedArrays, attribs);
+        cliff.render(gl, instancedArrays, attribs, this.cliffTextures);
       }
 
       // Clear instanced attributes.
@@ -700,7 +701,7 @@ export default class War3MapViewer extends ModelViewer {
         }
 
         if (row) {
-          this.units.push({unit, instance, location, radius: parseFloat(row.scale || "0") * 72});
+          this.units.push({unit, instance, location, radius: parseFloat(row.scale || "0") * 36});
         }
 
         standOnRepeat(instance, animProps);
@@ -822,6 +823,38 @@ export default class War3MapViewer extends ModelViewer {
     this.columns = columns - 1;
     this.rows = rows - 1;
 
+    let cliffPathTex = {};
+    for (let doodad of this.doodads.terrainDoodads) {
+      let row = this.terrainObjects.find(row => row.id === doodad.id);
+      if (!row) continue;
+      row = row.data;
+      if (!cliffPathTex[row.pathtex]) {
+        cliffPathTex[row.pathtex] = this.load(row.pathtex);
+      }
+    }
+    await this.whenLoaded(Object.values(cliffPathTex));
+    for (let doodad of this.doodads.terrainDoodads) {
+      let row = this.terrainObjects.find(row => row.id === doodad.id);
+      if (!row) continue;
+      row = row.data;
+      let pathTex = cliffPathTex[row.pathtex];
+      if (!pathTex || !pathTex.imageData) {
+        continue;
+      }
+      let path = row.file + ".mdx";
+      if (!cliffs[path]) {
+        cliffs[path] = {locations: []};
+      }
+      let [x, y] = doodad.location;
+      let w = pathTex.originalData.width >> 2, h = pathTex.originalData.height >> 2;
+      for (let i = 0; i < h; ++i) {
+        for (let j = 0; j < w; ++j) {
+          corners[y + i][x + j].rampType = -1;
+        }
+      }
+      cliffs[path].locations.push((x + w/2) * 128.0 + centerOffset[0], (y + h/2) * 128.0 + centerOffset[1], (corners[y][x].layerHeight - 2) * 128.0);
+    }
+    
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < columns; x++) {
         let bottomLeft = corners[y][x];
@@ -998,18 +1031,6 @@ export default class War3MapViewer extends ModelViewer {
       waterBuffer,
     };
 
-    for (let doodad in this.doodads.terrainDoodads) {
-      let row = this.terrainObjects.find(row => row.id === doodad.id);
-      if (!row) continue;
-      row = row.data;
-      let path = row.file + ".mdx";
-      if (!cliffs[path]) {
-        cliffs[path] = {locations: []};
-      }
-      let [x, y] = doodad.location;
-      cliffs[path].locations.push(x * 128.0 + centerOffset[0], y * 128.0 + centerOffset[1], (corners[y][x].layerHeight - 2) * 128.0);
-    }
-
     this.terrainReady = true;
     this.anyReady = true;
 
@@ -1027,6 +1048,7 @@ export default class War3MapViewer extends ModelViewer {
     });
 
     this.cliffModels = await Promise.all(cliffPromises);
+    this.cliffModels.sort((a, b) => !a.textures > !b.textures);
     this.cliffsReady = true;
   }
 
@@ -1505,8 +1527,11 @@ export default class War3MapViewer extends ModelViewer {
   inPlayableArea(x, y) {
     x = (x - this.centerOffset[0]) / 128.0;
     y = (y - this.centerOffset[1]) / 128.0;
-    return x >= this.mapBounds[0] && x < this.mapSize[0] - this.mapBounds[1] - 1 &&
-      y >= this.mapBounds[2] && y < this.mapSize[1] - this.mapBounds[3] - 1;
+    if (x < this.mapBounds[0]) return false;
+    if (x >= this.mapSize[0] - this.mapBounds[1] - 1) return false;
+    if (y < this.mapBounds[2]) return false;
+    if (y >= this.mapSize[1] - this.mapBounds[3] - 1) return false;
+    return !this.corners[Math.floor(y)][Math.floor(x)].boundary;
   }
 
   addShadow(file, x, y) {
@@ -1569,6 +1594,14 @@ export default class War3MapViewer extends ModelViewer {
     const outsideArea = 204;
     let x0 = this.mapBounds[0] * 4, x1 = (this.mapSize[0] - this.mapBounds[1] - 1) * 4,
         y0 = this.mapBounds[2] * 4, y1 = (this.mapSize[1] - this.mapBounds[3] - 1) * 4;
+    for (let y = y0; y < y1; ++y) {
+      for (let x = x0; x < x1; ++x) {
+        let c = this.corners[y >> 2][x >> 2];
+        if (c.boundary) {
+          shadowData[y * columns + x] = outsideArea;
+        }
+      }
+    }
     for (let y = 0; y < rows; ++y) {
       for (let x = 0; x < x0; ++x) {
         shadowData[y * columns + x] = outsideArea;
@@ -1679,7 +1712,7 @@ export default class War3MapViewer extends ModelViewer {
 
   deselect() {
     if (this.selModel) {
-      let idx = this.uberSplatModels.find(this.selModel);
+      let idx = this.uberSplatModels.indexOf(this.selModel);
       if (idx >= 0) {
         this.uberSplatModels.splice(idx, 1);
       }
@@ -1693,13 +1726,18 @@ export default class War3MapViewer extends ModelViewer {
       return;
     }
     this.deselect();
+    if (!unit) {
+      return;
+    }
 
     let row = this.unitsData.find(row => row.id === unit.id);
+    if (!row) return;
+    row = row.data;
     let selScale = parseFloat(row.scale || "0");
     if (!selScale) return;
     this.selected = unit;
 
-    let radius = 72 * selScale, path;
+    let radius = 36 * selScale, path;
     if (radius < 100) {
       path = 'ReplaceableTextures\\Selection\\SelectionCircleSmall.blp';
     } if (radius < 300) {
@@ -1712,9 +1750,8 @@ export default class War3MapViewer extends ModelViewer {
     this.load(path).whenLoaded().then(tex => {
       if (this.selModel !== model) return;
       let [x, y] = unit.location;
-      let z = parseFloat(row.selZ || "");
-      if (!z) z = 2;
-      this.selModel = new SplatModel(this.gl, tex, [x - radius, y - radius, x + radius, y + radius, z], this.centerOffset);
+      let z = parseFloat(row.selZ || "0");
+      this.selModel = new SplatModel(this.gl, tex, [x - radius, y - radius, x + radius, y + radius, z + 15], this.centerOffset);
       this.selModel.color = [0, 1, 0, 1];
       this.uberSplatModels.push(this.selModel);
     });
@@ -1722,25 +1759,36 @@ export default class War3MapViewer extends ModelViewer {
 
   selectUnit(x, y) {
     let ray = new Float32Array(6);
-    let dir = normalHeap1, pos = normalHeap2;
+    this.camera.screenToWorldRay(ray, [x, y]);
+    let dir = normalHeap1;
     dir[0] = ray[3] - ray[0];
     dir[1] = ray[4] - ray[1];
     dir[2] = ray[5] - ray[2];
-    //ray[2] /= 2.0;
-    //dir[2] /= 2.0;
     vec3.normalize(dir, dir);
-    let closest = vec3.create();
-    this.camera.screenToWorldRay(ray, [x, y]);
+    let eMid = vec3.create(), eSize = vec3.create(), rDir = vec3.create();
 
     let entity = null;
     let entDist = 1e+6;
     this.units.forEach(ent => {
-      let {location, radius} = ent;
-      vec3.sub(pos, location, ray);
-      let dp = Math.max(0, vec3.dot(dir, pos));
+      let {instance, location, radius} = ent;
+      if (!instance.model.loaded) return;
+      let extent = instance.model.extent;
+      vec3.add(eMid, extent.min, extent.max);
+      vec3.scale(eMid, eMid, 0.5);
+      vec3.sub(eSize, extent.max, eMid);
+      vec3.mul(eMid, eMid, instance.localScale);
+      vec3.mul(eSize, eSize, instance.localScale);
+
+      vec3.add(eMid, eMid, location);
+      vec3.sub(eMid, eMid, ray);
+      vec3.div(eMid, eMid, eSize);
+      vec3.div(rDir, dir, eSize);
+      let dlen = vec3.sqrLen(rDir);
+
+      let dp = Math.max(0, vec3.dot(rDir, eMid)) / dlen;
       if (dp > entDist) return;
-      vec3.scaleAndAdd(closest, ray, dir, dp);
-      if (vec3.sqrDist(closest, location) < radius) {
+      vec3.scale(rDir, rDir, dp);
+      if (vec3.sqrDist(rDir, eMid) < 1.0) {
         entity = ent;
         entDist = dp;
       }

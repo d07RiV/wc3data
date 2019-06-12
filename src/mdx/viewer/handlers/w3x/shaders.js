@@ -181,14 +181,16 @@ export default {
 
     attribute vec3 a_position;
     attribute vec3 a_normal;
-    attribute vec2 a_uv;
+    attribute vec2 a_uv1;
+    attribute vec2 a_uv2;
     attribute vec3 a_instancePosition;
     attribute float a_instanceTexture;
 
     varying vec3 v_normal1;
     varying vec3 v_normal2;
     varying float v_height;
-    varying vec2 v_uv;
+    varying vec2 v_uv1;
+    varying vec2 v_uv2;
     varying vec2 v_suv;
     varying float v_texture;
 
@@ -214,7 +216,8 @@ export default {
       v_normal2 = vec3(a_normal.y, -a_normal.x, a_normal.z);
       v_height = position.z / 128.0;
 
-      v_uv = a_uv;
+      v_uv1 = a_uv1;
+      v_uv2 = a_uv2;
       v_suv = corner / u_size;
       v_texture = a_instanceTexture;
 
@@ -230,22 +233,27 @@ export default {
     varying vec3 v_normal1;
     varying vec3 v_normal2;
     varying float v_height;
-    varying vec2 v_uv;
+    varying vec2 v_uv1;
+    varying vec2 v_uv2;
     varying vec2 v_suv;
     varying float v_texture;
 
     const vec3 lightDirection = normalize(vec3(-0.3, -0.3, 0.25));
 
-    vec4 sample(int texture, vec2 uv) {
+    vec4 sample(int texture) {
       if (texture == 0) {
-        return texture2D(u_texture1, uv);
+        return texture2D(u_texture1, v_uv1);
+      } else if (texture == 1) {
+        return texture2D(u_texture2, v_uv1);
       } else {
-        return texture2D(u_texture2, uv);
+        vec4 c1 = texture2D(u_texture1, v_uv1).rgba;
+        vec4 c2 = texture2D(u_texture2, v_uv2).rgba;
+        return mix(c1, c2, c2.a);
       }
     }
 
     void main() {
-      vec4 color = sample(int(v_texture+0.01), v_uv).rgba;
+      vec4 color = sample(int(v_texture+0.01)).rgba;
 
       float height = 2.0 * (fract(v_height) - 0.5);
       height = height * height;

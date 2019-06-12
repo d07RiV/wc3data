@@ -11,7 +11,8 @@ export default class SplatModel {
   constructor(gl, texture, locations, centerOffset) {
     this.texture = texture;
     this.batches = [];
-    this.color = [255, 255, 255, 255];
+    this.color = [1, 1, 1, 1];
+    debugger;
 
     const MaxVertices = 65000;
 
@@ -32,7 +33,7 @@ export default class SplatModel {
         continue;
       }
 
-      let start = vertices.length / 2, step = ix1 - ix0 + 1;
+      let start = vertices.length / 3, step = ix1 - ix0 + 1;
       if (start + newVerts > MaxVertices) {
         this.addBatch(gl, vertices, uvs, indices);
         vertices.length = 0;

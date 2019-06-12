@@ -16,33 +16,46 @@ export default class TerrainModel {
     let vertices = geoset.vertices;
     let normals = geoset.normals;
     let uvs = geoset.uvSets[0];
+    let uvs2 = geoset.uvSets[1];
     let faces = geoset.faces;
     let normalsOffset = vertices.byteLength;
     let uvsOffset = normalsOffset + normals.byteLength;
+    let uvs2Offset = uvsOffset + uvs.byteLength;
+    let totalLength = uvs2Offset + (uvs2 ? uvs2.byteLength : 0);
+    if (!uvs2) {
+      uvs2Offset = uvsOffset;
+    }
+    let instances = locations.length / 3;
 
     if (!textures) {
-      let path = parser.textures[0].path;
-      this.texture = loader.load(path);
+      this.textures = parser.textures.map(tex => tex.path ? loader.load(tex.path) : null);
+      textures = new Uint8Array(instances);
+      if (uvs2 && parser.textures.length >= 2) {
+        for (let i = 0; i < instances; ++i) {
+          textures[i] = 2;
+        }
+      }
     }
+
 
     let vertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, uvsOffset + uvs.byteLength, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, totalLength, gl.STATIC_DRAW);
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertices);
     gl.bufferSubData(gl.ARRAY_BUFFER, normalsOffset, normals);
     gl.bufferSubData(gl.ARRAY_BUFFER, uvsOffset, uvs);
+    if (uvs2) gl.bufferSubData(gl.ARRAY_BUFFER, uvs2Offset, uvs2);
 
     let faceBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, faceBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, faces, gl.STATIC_DRAW);
 
-    let instances = locations.length / 3;
     let texturesOffset = locations.length * 4;
     let locationAndTextureBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, locationAndTextureBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, texturesOffset + instances, gl.STATIC_DRAW);
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, new Float32Array(locations));
-    gl.bufferSubData(gl.ARRAY_BUFFER, texturesOffset, textures ? new Uint8Array(textures) : new Uint8Array(instances));
+    gl.bufferSubData(gl.ARRAY_BUFFER, texturesOffset, new Uint8Array(textures));
 
     /** @member {WebGLBuffer} */
     this.vertexBuffer = vertexBuffer;
@@ -52,6 +65,8 @@ export default class TerrainModel {
     this.normalsOffset = normalsOffset;
     /** @member {number} */
     this.uvsOffset = uvsOffset;
+    /** @member {number} */
+    this.uvs2Offset = uvs2Offset;
     /** @member {number} */
     this.elements = faces.length;
     /** @member {WebGLBuffer} */
@@ -67,12 +82,19 @@ export default class TerrainModel {
    * @param {ANGLEInstancedArrays} instancedArrays
    * @param {Object} attribs
    */
-  render(gl, instancedArrays, attribs) {
-    if (this.texture) {
-      if (!this.texture.webglResource) {
-        return;
+  render(gl, instancedArrays, attribs, tex) {
+    if (this.textures) {
+      for (let i = 0; i < this.textures.length && i < 2; ++i) {
+        gl.activeTexture(gl.TEXTURE1 + i);
+        if (this.textures[i]) {
+          if (!this.textures[i].webglResource) {
+            return;
+          }
+          gl.bindTexture(gl.TEXTURE_2D, this.textures[i].webglResource);
+        } else {
+          gl.bindTexture(gl.TEXTURE_2D, tex[i].webglResource);
+        }
       }
-      gl.bindTexture(gl.TEXTURE_2D, this.texture.webglResource);
     }
 
     // Locations and textures.
@@ -84,7 +106,8 @@ export default class TerrainModel {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
     gl.vertexAttribPointer(attribs.a_position, 3, gl.FLOAT, false, 12, 0);
     gl.vertexAttribPointer(attribs.a_normal, 3, gl.FLOAT, false, 12, this.normalsOffset);
-    gl.vertexAttribPointer(attribs.a_uv, 2, gl.FLOAT, false, 8, this.uvsOffset);
+    gl.vertexAttribPointer(attribs.a_uv1, 2, gl.FLOAT, false, 8, this.uvsOffset);
+    gl.vertexAttribPointer(attribs.a_uv2, 2, gl.FLOAT, false, 8, this.uvs2Offset);
 
     // Faces.
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.faceBuffer);
