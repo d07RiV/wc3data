@@ -237,7 +237,7 @@ class Root extends React.Component {
     const { mapLoadName, mapLoadProgress, mapLoadStatus, mapLoadError } = this.state;
     return (
       <Router basename="/" ref={e => this.router = e}>
-        <Title.Root>
+        <Title title="WC3 Data">
           <Options>
             <AppCache.Context.Provider value={this.cache}>
               <AppCache.MapsContext.Provider value={this.cache.maps}>
@@ -248,7 +248,7 @@ class Root extends React.Component {
               </AppCache.MapsContext.Provider>
             </AppCache.Context.Provider>
           </Options>
-        </Title.Root>
+        </Title>
       </Router>
     )
   }

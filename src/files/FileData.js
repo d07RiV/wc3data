@@ -5,6 +5,7 @@ import { Glyphicon } from 'react-bootstrap';
 import { downloadBlob } from 'utils';
 import SlkFile from 'mdx/parsers/slk/file';
 import encoding from 'text-encoding';
+import Title from 'data/title';
 
 import FileSlkView from './FileSlk';
 import FileHexView from './FileHex';
@@ -89,6 +90,9 @@ export class FileData extends React.Component {
 
   getName() {
     let { data, id } = this.props;
+    if (this.name) {
+      return this.name;
+    }
     const listfile = data.file("listfile.txt");
     if (listfile) {
       const names = listfile.split("\n").filter(n => n.length > 0);
@@ -99,10 +103,10 @@ export class FileData extends React.Component {
       });
       if (name != null) {
         const parts = name.split(/[\\/]/);
-        return parts[parts.length - 1];
+        return this.name = parts[parts.length - 1];
       }
     }
-    return makeUid(id);
+    return this.name = makeUid(id);
   }
 
   isJass() {
@@ -126,6 +130,7 @@ export class FileData extends React.Component {
 
     return (
       <div className="FileData">
+        <Title title={this.getName()}/>
         <ul className="tab-line">
           <li key="dl" className="tab-xbutton" onClick={this.onDownload}>Download <Glyphicon glyph="download-alt"/></li>
           {this.makePanel("hex", "Hex")}

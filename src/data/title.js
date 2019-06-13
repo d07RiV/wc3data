@@ -1,64 +1,68 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
 const TitleContext = React.createContext(null);
 
-class TitleRoot extends React.Component {
-  titles = new Map();
-  current = null;
+export default class Title extends React.PureComponent {
+  static contextType = TitleContext;
+  static propTypes = {
+    title: PropTypes.string.isRequired,
+    combiner: PropTypes.func,
+  }
+  static defaultProps = {
+    combiner: (prev, current) => `${prev} - ${current}`,
+  }
+
+  children = []
 
   componentDidMount() {
-    this.prefix = document.title;
-  }
-
-  setTitle(key, value) {
-    this.titles.set(key, value);
-    if (!this.current) {
-      this.current = key;
-    }
-    if (key === this.current) {
-      document.title = `${this.prefix} - ${value}`;
+    if (this.context) {
+      this.context.children.push(this);
+      this.context.updateTitle();
     }
   }
-  unsetTitle(key) {
-    this.titles.delete(key);
-    if (this.current === key) {
-      if (this.titles.size) {
-        const val = this.titles.entries().next().value;
-        this.current = val[0];
-        document.title = `${this.prefix} - ${val[1]}`;
-      } else {
-        this.current = null;
-        document.title = this.prefix;
+  componentDidUpdate() {
+    this.updateTitle();
+  }
+  componentWillUnmount() {
+    if (this.context) {
+      let index = this.context.children.indexOf(this);
+      if (index >= 0) {
+        this.context.children.splice(index, 1);
+        if (index >= this.context.children.length) {
+          this.context.updateTitle();
+        }
       }
     }
   }
 
+  updateTitle() {
+    let root = this;
+    while (root.context) {
+      root = root.context;
+    }
+    document.title = root.getTitle();
+  }
+  getTitle(prev) {
+    let {title, combiner} = this.props;
+    if (prev) {
+      title = combiner(prev, title);
+    }
+    if (this.children.length) {
+      title = this.children[this.children.length - 1].getTitle(title);
+    }
+    return title;
+  }
+
   render() {
     const {children} = this.props;
+    if (!children) {
+      return null;
+    }
     return (
       <TitleContext.Provider value={this}>
         {children}
       </TitleContext.Provider>
     );
-  }
-}
-
-export default class Title extends React.Component {
-  static contextType = TitleContext;
-
-  static Root = TitleRoot;
-
-  componentDidMount() {
-    this.context.setTitle(this, this.props.title);
-  }
-  componentDidUpdate() {
-    this.context.setTitle(this, this.props.title);
-  }
-  componentWillUnmount() {
-    this.context.unsetTitle(this);
-  }
-
-  render() {
-    return null;
   }
 }

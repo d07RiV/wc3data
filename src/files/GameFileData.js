@@ -5,6 +5,7 @@ import { Glyphicon } from 'react-bootstrap';
 import { downloadBlob, withAsync } from 'utils';
 import SlkFile from 'mdx/parsers/slk/file';
 import encoding from 'text-encoding';
+import Title from 'data/title';
 
 import FileSlkView from './FileSlk';
 import FileHexView from './FileHex';
@@ -92,6 +93,7 @@ class GameFileInner extends React.Component {
   render() {
     return (
       <div className="FileData">
+        <Title title={this.props.name}/>
         <ul className="tab-line">
           <li key="dl" className="tab-xbutton" onClick={this.onDownload}>Download <Glyphicon glyph="download-alt"/></li>
           {this.makePanel("hex", "Hex")}
