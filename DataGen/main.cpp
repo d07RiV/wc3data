@@ -275,7 +275,7 @@ struct MpqBuildData : public BuildData {
       loader.add(arc);
     }
 
-    File listf(path::root() / "listfile.txt", "rb");
+    File listf(path::root() / "../listfile.txt", "rb");
     std::string line;
     while (listf.getline(line)) {
       names.insert(trim(line));
