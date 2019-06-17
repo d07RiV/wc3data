@@ -102,7 +102,10 @@ export default class War3MapW3i {
     this.saves = stream.readInt32();
     this.editorVersion = stream.readInt32();
     if (this.version >= 27) {
-      stream.skip(16);
+      this.gameVersionMajor = stream.readInt32();
+      this.gameVersionMinor = stream.readInt32();
+      this.gameVersionPatch = stream.readInt32();
+      this.gameVersionBuild = stream.readInt32();
     }
     this.name = stream.readUntilNull();
     this.author = stream.readUntilNull();
@@ -142,7 +145,10 @@ export default class War3MapW3i {
       this.lightEnvironmentTileset = stream.read(1, true);
       this.waterVertexColor = stream.readUint8Array(4);
     }
-    return;
+
+    if (this.version >= 27) {
+      this.lua = stream.readInt8();
+    }
 
     for (let i = 0, l = stream.readInt32(); i < l; i++) {
       let player = new Player();

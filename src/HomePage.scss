@@ -1,6 +1,30 @@
 .ModelPage {
   flex: 1;
   position: relative;
+  .selRect {
+    position: absolute;
+    display: none;
+    z-index: 5;
+    border: 2px solid #0f0;
+  }
+  .Selection {
+    .Heading {
+      margin: -6px -6px 4px -6px;
+      border-radius: 6px;
+      background: rgba(64, 64, 64, 0.5);
+      cursor: all-scroll;
+      padding: 0 6px;
+      font-size: 120%;
+      font-weight: bold;
+      text-align: center;
+    }
+    position: absolute;
+    z-index: 8;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    border-radius: 6px;
+    padding: 6px;
+  }
 }
 .HomePage {
   flex: 1;

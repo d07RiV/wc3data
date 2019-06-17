@@ -62,10 +62,11 @@ string path::root() {
     readlink("/proc/self/exe", buffer, sizeof buffer);
 #endif
     rp = path(buffer);
-#ifdef _DEBUG
-    rp = "G:\\rivsoft\\wc3\\DataGen\\work";
-#endif
-    rp = "C:\\Projects\\wc3data\\DataGen\\work";
+    rp = rp / "work";
+//#ifdef _DEBUG
+//    rp = "G:\\rivsoft\\wc3\\DataGen\\work";
+//#endif
+//    rp = "C:\\Projects\\wc3data\\DataGen\\work";
     SetCurrentDirectory(rp.c_str());
   }
   return rp;

@@ -369,7 +369,7 @@ export default class Camera {
     vec3.transformMat4(vectorHeap, v, this.worldProjectionMatrix);
 
     out[0] = Math.round(((vectorHeap[0] + 1) / 2) * viewport[2]);
-    out[1] = Math.round(((vectorHeap[1] + 1) / 2) * viewport[3]);
+    out[1] = Math.round(((1 - vectorHeap[1]) / 2) * viewport[3]);
 
     return out;
   }

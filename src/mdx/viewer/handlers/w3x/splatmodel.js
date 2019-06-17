@@ -12,7 +12,6 @@ export default class SplatModel {
     this.texture = texture;
     this.batches = [];
     this.color = [1, 1, 1, 1];
-    debugger;
 
     const MaxVertices = 65000;
 

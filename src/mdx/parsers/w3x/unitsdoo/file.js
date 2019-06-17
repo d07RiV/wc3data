@@ -42,6 +42,11 @@ export default class War3MapUnitsDoo {
 
       this.units[i] = unit;
     }
+    let types = new Set();
+    this.units.forEach(u => {
+      u.droppedItemSets.forEach(s => s.items.forEach(it => types.add(it.id)));
+    });
+    console.log(types);
 
     return true;
   }

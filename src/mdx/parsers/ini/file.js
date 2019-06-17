@@ -25,7 +25,7 @@ export default class IniFile {
     let section = this.properties;
     let sections = this.sections;
 
-    for (let line of buffer.split('\r\n')) {
+    for (let line of buffer.split(/\r\n?|\n/)) {
       // INI defines comments as starting with a semicolon ';'.
       // However, Warcraft 3 INI files use normal C comments '//'.
       // In addition, Warcraft 3 files have empty lines.

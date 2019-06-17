@@ -1241,6 +1241,9 @@ export default class War3MapViewer extends ModelViewer {
 
     for (let tileset = 0; tileset < tilesetsCount; tileset++) {
       let imageData = tilesets[tileset].imageData;
+      if (!imageData) {
+        continue;
+      }
 
       for (let variation = 0; variation < 16; variation++) {
         let x = (variation % 4) * 64;
@@ -1711,49 +1714,60 @@ export default class War3MapViewer extends ModelViewer {
   }
 
   deselect() {
-    if (this.selModel) {
-      let idx = this.uberSplatModels.indexOf(this.selModel);
-      if (idx >= 0) {
-        this.uberSplatModels.splice(idx, 1);
-      }
-      this.selModel = null;
+    if (this.selModels && this.selModels.length) {
+      this.selModels.forEach(model => {
+        let idx = this.uberSplatModels.indexOf(model);
+        if (idx >= 0) {
+          this.uberSplatModels.splice(idx, 1);
+        }
+      });
+      this.selModels = [];
     }
-    this.selected = null;
+    this.selected = [];
   }
 
-  doSelectUnit(unit) {
-    if (this.selected === unit) {
-      return;
-    }
+  doSelectUnits(units) {
     this.deselect();
-    if (!unit) {
+    if (!units.length) {
       return;
     }
 
-    let row = this.unitsData.find(row => row.id === unit.id);
-    if (!row) return;
-    row = row.data;
-    let selScale = parseFloat(row.scale || "0");
-    if (!selScale) return;
-    this.selected = unit;
+    let splats = {};
 
-    let radius = 36 * selScale, path;
-    if (radius < 100) {
-      path = 'ReplaceableTextures\\Selection\\SelectionCircleSmall.blp';
-    } if (radius < 300) {
-      path = 'ReplaceableTextures\\Selection\\SelectionCircleMed.blp';
-    } else {
-      path = 'ReplaceableTextures\\Selection\\SelectionCircleLarge.blp';
-    }
+    this.selected = units.filter(unit => {
+      let row = this.unitsData.find(row => row.id === unit.id);
+      if (!row) return false;
+      row = row.data;
+      let selScale = parseFloat(row.scale || "0");
+      if (!selScale) return false;
 
-    let model = this.selModel = {};
-    this.load(path).whenLoaded().then(tex => {
-      if (this.selModel !== model) return;
+      let radius = 36 * selScale, path;
+      if (radius < 100) {
+        path = 'ReplaceableTextures\\Selection\\SelectionCircleSmall.blp';
+      } if (radius < 300) {
+        path = 'ReplaceableTextures\\Selection\\SelectionCircleMed.blp';
+      } else {
+        path = 'ReplaceableTextures\\Selection\\SelectionCircleLarge.blp';
+      }
+      if (!splats[path]) {
+        splats[path] = [];
+      }
       let [x, y] = unit.location;
       let z = parseFloat(row.selZ || "0");
-      this.selModel = new SplatModel(this.gl, tex, [x - radius, y - radius, x + radius, y + radius, z + 15], this.centerOffset);
-      this.selModel.color = [0, 1, 0, 1];
-      this.uberSplatModels.push(this.selModel);
+      splats[path].push(x - radius, y - radius, x + radius, y + radius, z + 5);
+
+      return true;
+    });
+
+    let models = this.selModels = [];
+    Object.entries(splats).forEach(([path, locations]) => {
+      this.load(path).whenLoaded().then(tex => {
+        if (this.selModels !== models) return;
+        let model = new SplatModel(this.gl, tex, locations, this.centerOffset);
+        model.color = [0, 1, 0, 1];
+        this.selModels.push(model);
+        this.uberSplatModels.push(model);
+      });
     });
   }
 
@@ -1771,13 +1785,8 @@ export default class War3MapViewer extends ModelViewer {
     let entDist = 1e+6;
     this.units.forEach(ent => {
       let {instance, location, radius} = ent;
-      if (!instance.model.loaded) return;
-      let extent = instance.model.extent;
-      vec3.add(eMid, extent.min, extent.max);
-      vec3.scale(eMid, eMid, 0.5);
-      vec3.sub(eSize, extent.max, eMid);
-      vec3.mul(eMid, eMid, instance.localScale);
-      vec3.mul(eSize, eSize, instance.localScale);
+      vec3.set(eMid, 0, 0, radius / 2);
+      vec3.set(eSize, radius, radius, radius);
 
       vec3.add(eMid, eMid, location);
       vec3.sub(eMid, eMid, ray);
@@ -1793,8 +1802,27 @@ export default class War3MapViewer extends ModelViewer {
         entDist = dp;
       }
     });
-    this.doSelectUnit(entity && entity.unit);
+    this.doSelectUnits(entity ? [entity.unit] : []);
     return entity;
+  }
+
+  selectUnits(x0, y0, x1, y1) {
+    let sp = new Float32Array(2);
+    let sel = this.units.filter(ent => {
+      let {location, radius, unit} = ent;
+      let row = this.unitsData.find(row => row.id === unit.id);
+      if (!row) return false;
+      row = row.data;
+      let [x, y] = unit.location;
+      let z = parseFloat(row.selZ || "0") + this.heightAt(x, y);
+      this.camera.worldToScreen(sp, [x, y, z]);
+      if (sp[0] >= x0 && sp[0] < x1 && sp[1] >= y0 && sp[1] < y1) {
+        return true;
+      }
+      return false;
+    });
+    this.doSelectUnits(sel.map(e => e.unit));
+    return sel;
   }
 }
 

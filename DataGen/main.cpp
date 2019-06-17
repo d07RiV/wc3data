@@ -47,13 +47,14 @@ File gzip(File src) {
 #define TEST_MAP 0
 #define NUM_IMAGE_ARCHIVES 8
 
-MemoryFile write_images(std::set<istring> const& names, CompositeLoader& loader) {
+MemoryFile write_images(std::set<istring> const& names, CompositeLoader& loader, bool all = false) {
   ImageStorage images(16, 16, 16, 16);
-#if WRITE_ALL_IMAGES
   HashArchive imarc[NUM_IMAGE_ARCHIVES];
   HashArchive mdxarc;
-  File listFile("rootlist.txt", "wb");
-#endif
+  File listFile;
+  if (all) {
+	  listFile = File("rootlist.txt", "wb");
+  }
   for (auto fn : Logger::loop(names)) {
     istring ext = path::ext(fn);
 
@@ -70,8 +71,7 @@ MemoryFile write_images(std::set<istring> const& names, CompositeLoader& loader)
       isMod = true;
     }
 
-#if WRITE_ALL_IMAGES
-    if (ext == ".mdx" || ext == ".slk" || ext == ".txt" || ext == ".j") {
+	if (all && (ext == ".mdx" || ext == ".slk" || ext == ".txt" || ext == ".j")) {
       File f = loader.load(fn.c_str());
       if (f) {
         mdxarc.add(hash, f, true);
@@ -79,34 +79,31 @@ MemoryFile write_images(std::set<istring> const& names, CompositeLoader& loader)
       }
       continue;
     }
-#endif
     if (!isImage) {
       continue;
     }
-#if !WRITE_ALL_IMAGES
-    if (fn.find("replaceabletextures\\") != 0) {
+    if (!all && fn.find("replaceabletextures\\") != 0) {
       continue;
     }
-#endif
     File f = loader.load(fn.c_str());
     Image img(f);
     if (img) {
       if (fn.find("replaceabletextures\\") == 0) {
         images.add(pathHash(fn.c_str()), img);
       }
-#if WRITE_ALL_IMAGES
-      File& imgf = imarc[hash % NUM_IMAGE_ARCHIVES].create(hash);
-      img.write(imgf);
-      listFile.printf("%s\n", fn.c_str());
-#endif
+	    if (all) {
+        File& imgf = imarc[hash % NUM_IMAGE_ARCHIVES].create(hash);
+        img.write(imgf);
+        listFile.printf("%s\n", fn.c_str());
+	    }
     }
   }
-#if WRITE_ALL_IMAGES
-  for ( size_t i = 0; i < NUM_IMAGE_ARCHIVES; ++i ) {
-    imarc[i].write(File(path::root() / fmtstring("images%d.gzx", (int) i), "wb"));
+  if (all) {
+    for (size_t i = 0; i < NUM_IMAGE_ARCHIVES; ++i) {
+      imarc[i].write(File(path::root() / fmtstring("images%d.gzx", (int)i), "wb"));
+    }
+    mdxarc.write(File(path::root() / "files.gzx", "wb"));
   }
-  mdxarc.write(File(path::root() / "files.gzx", "wb"));
-#endif
   MemoryFile hashes;
   images.writeHashes(hashes);
   hashes.seek(0);
@@ -145,157 +142,187 @@ MemoryFile write_meta(std::set<istring> const& names, CompositeLoader& loader, F
   return metaFile;
 }
 
-int main() {
+struct BuildData {
   CompositeLoader loader;
-
-
-#if !TEST_MAP
-#if USE_CDN
-  auto build = CdnLoader::ngdp().version().build;
-  //build = "38f31eb67143d03da05854bfb559ed42"; // 1.30.1.10211
-  //build = "34872da6a3842639ff2d2a86ee9b3755"; // 1.30.2.11024
-  //build = "e4473116a14ec84d2e00c46af4c3f42f"; // 1.30.2.11029
-  //build = "8741363b75f97365ff584fda9d4b804f"; // 1.30.2.11065
-  build = "7c45731c22f6bf4ff30035ab9d905745"; // 1.30.4.11274
-  // 1.31.0.12071
-  auto cdnloader = std::make_shared<CdnLoader>(build);
-
-  //auto mpqloader = std::make_shared<mpq::Archive>(File(R"(G:\Games\Warcraft III\Maps\Download\DotA v6.79c.w3x)"));
-  //mpqloader->loadListFile();
-
-  //loader.add(mpqloader);
-  loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Locales\\enUS.w3mod:_Balance\\Custom_V1.w3mod:", cdnloader));
-  loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Locales\\enUS.w3mod:", cdnloader));
-  loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Balance\\Custom_V1.w3mod:", cdnloader));
-  loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Tilesets\\", cdnloader));
-  loader.add(std::make_shared<PrefixLoader>("War3.w3mod:", cdnloader));
-  //loader.add(std::make_shared<PrefixLoader>("enUS-", cdnloader));
-  //loader.add(std::make_shared<PrefixLoader>("enUS-War3Local.mpq:", cdnloader));
-  //loader.add(std::make_shared<PrefixLoader>("War3.mpq:", cdnloader));
-  loader.add(cdnloader);
-
-  istring tset = "War3.w3mod:_Tilesets\\";
-
   std::set<istring> names;
-  for (auto fn : cdnloader->files()) {
-    if (istring(fn.substr(0, tset.size())) == tset) {
-      fn = fn.substr(tset.size());
+  CdnLoader::BuildInfo info;
+  MemoryFile meta;
+
+  void write_data(bool isMain, bool allImages) {
+    Logger::begin(isMain ? 4 : 3, fmtstring("Parsing %s", info.version.c_str()).c_str());
+
+    File icons;
+    if (isMain) {
+      Logger::item("Parsing images");
+      icons = write_images(names, loader, allImages);
+      File(path::root() / "images.dat", "wb").copy(icons);
+      icons.seek(0);
     } else {
-      size_t colon = fn.find_last_of(':');
-      if (colon != std::string::npos) {
-        fn = fn.substr(colon + 1);
+      icons = File(path::root() / "images.dat", "rb");
+    }
+
+    Logger::item("Writing metadata");
+    meta = write_meta(names, loader, icons);
+
+    if (isMain) {
+      File(path::root() / "meta.gzx", "wb").copy(meta);
+      meta.seek(0);
+    }
+
+    MapParser parser(meta, File());
+
+    Logger::item("Parsing data");
+    auto result = parser.processObjects();
+    result.seek(0);
+
+    Logger::item("Writing data");
+    File(path::root() / fmtstring("%u.json", info.build), "wb").copy(result);
+    File(path::root() / fmtstring("%u.json.gz", info.build), "wb").copy(gzip(result));
+
+    json::Value versions;
+    json::parse(File(path::root() / "versions.json"), versions);
+    versions["versions"][std::to_string(info.build)] = info.version;
+    json::write(File(path::root() / "versions.json", "wb"), versions);
+
+    Logger::end();
+  }
+
+  void write_maps() {
+    if (!meta) {
+      File icons(path::root() / "images.dat", "rb");
+      meta = write_meta(names, loader, icons);
+    }
+    json::Value versions;
+    json::parse(File(path::root() / "versions.json"), versions);
+    json::Value& mlist = versions["custom"];
+    std::vector<std::string> mapnames;
+    for (auto fn : names) {
+      istring ext = path::ext(fn);
+      if (ext == ".w3x" || ext == ".w3m") {
+        mapnames.push_back(fn);
       }
     }
-    names.insert(fn);
-  }
+    for (auto fn : Logger::loop(mapnames)) {
+      auto hash = pathHash(fn.c_str());
+      if (File mf = loader.load(fn.c_str())) {
+        fn = std::string(fn).substr(0, fn.length() - 4);
+        for (auto& c : fn) {
+          if (c == '\\' || c == '/') {
+            c = '~';
+          }
+        }
 
-  auto info = cdnloader->buildInfo();
-#else
-  std::string root = R"(G:\Games\Warcraft III)";
-  for (auto ar : {"war3patch.mpq", "war3xLocal.mpq", "war3x.mpq", "war3.mpq"}) {
-    auto arc = std::make_shared<mpq::Archive>(File(root / ar));
-    loader.add(arc);
-  }
+        MapParser parser(meta, mf);
+        auto pf = parser.processAll();
+        File(fmtstring("maps/%s.gzx", fn.c_str()).c_str(), "wb").copy(pf);
 
-  std::set<istring> names;
+        std::string name = parser.info["name"].getString();
+        std::string desc = parser.info["description"].getString();
+
+        auto& mdata = mlist[fmtstring("%016llx", hash)];
+        mdata["name"] = name;
+        mdata["data"] = fmtstring("maps/%s.gzx", fn.c_str());
+        mdata["desc"] = desc;
+      }
+    }
+    json::write(File(path::root() / "versions.json", "wb"), versions);
+  }
+};
+
+struct CdnBuildData : public BuildData {
+  std::shared_ptr<CdnLoader> cdnloader;
+
+  CdnBuildData(std::string const& hash)
+    : cdnloader(std::make_shared<CdnLoader>(hash))
   {
+    info = cdnloader->buildInfo();
+
+    istring tset = "War3.w3mod:_Tilesets\\";
+
+    bool isMpq = true;
+    for (auto fn : cdnloader->files()) {
+      if (istring(fn.substr(0, tset.size())) == tset) {
+        fn = fn.substr(tset.size());
+        isMpq = false;
+      } else {
+        size_t colon = fn.find_last_of(':');
+        if (colon != std::string::npos) {
+          fn = fn.substr(colon + 1);
+        }
+      }
+      names.insert(fn);
+    }
+
+    if (isMpq) {
+      loader.add(std::make_shared<PrefixLoader>("enUS-", cdnloader));
+      loader.add(std::make_shared<PrefixLoader>("enUS-War3Local.mpq:", cdnloader));
+      loader.add(std::make_shared<PrefixLoader>("War3.mpq:", cdnloader));
+    } else {
+      loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Locales\\enUS.w3mod:_Balance\\Custom_V1.w3mod:", cdnloader));
+      loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Locales\\enUS.w3mod:", cdnloader));
+      loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Balance\\Custom_V1.w3mod:", cdnloader));
+      loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Tilesets\\", cdnloader));
+      loader.add(std::make_shared<PrefixLoader>("War3.w3mod:", cdnloader));
+    }
+    loader.add(cdnloader);
+  }
+};
+
+struct MpqBuildData : public BuildData {
+  MpqBuildData(std::string const& root) {
+    for (auto ar : { "war3patch.mpq", "war3xLocal.mpq", "war3x.mpq", "war3.mpq" }) {
+      auto arc = std::make_shared<mpq::Archive>(File(root / ar));
+      loader.add(arc);
+    }
+
     File listf(path::root() / "listfile.txt", "rb");
     std::string line;
     while (listf.getline(line)) {
       names.insert(trim(line));
     }
+
+    info.build = 7085;
+    info.version = "1.27.1.7085";
   }
+};
 
-  CdnLoader::BuildInfo info;
-  info.build = 7085;
-  info.version = "1.27.1.7085";
-#endif
+int main() {
+  auto build = CdnLoader::ngdp().version().build;
+  //build = "38f31eb67143d03da05854bfb559ed42"; // 1.30.1.10211
+  //build = "34872da6a3842639ff2d2a86ee9b3755"; // 1.30.2.11024
+  //build = "e4473116a14ec84d2e00c46af4c3f42f"; // 1.30.2.11029
+  //build = "8741363b75f97365ff584fda9d4b804f"; // 1.30.2.11065
+  //build = "7c45731c22f6bf4ff30035ab9d905745"; // 1.30.4.11274
+  // 1.31.0.12071
+  CdnBuildData data(build);
 
-#if GENERATE_META
-  MemoryFile icons = write_images(names, loader);
-  File(path::root() / "images.dat", "wb").copy(icons);
-  icons.seek(0);
-#else
-  File icons(path::root() / "images.dat", "rb");
-#endif
+  //std::string root = R"(G:\Games\Warcraft III)";
 
-  MemoryFile meta = write_meta(names, loader, icons);
+  data.write_data(true, true);
 
-#if GENERATE_META
-  File(path::root() / "meta.gzx", "wb").copy(meta);
-  meta.seek(0);
-#endif
-
-  MapParser parser(meta, File());
-
-  auto result = parser.processObjects();
-  result.seek(0);
-  File(path::root() / fmtstring("%u.json", info.build), "wb").copy(result);
-  File(path::root() / fmtstring("%u.json.gz", info.build), "wb").copy(gzip(result));
-
-  json::Value versions;
-  json::parse(File(path::root() / "versions.json"), versions);
-  versions["versions"][std::to_string(info.build)] = info.version;
-  json::write(File(path::root() / "versions.json", "wb"), versions);
-
-  Logger::log("Wrote %s", info.version.c_str());
-
-#if GENERATE_MAPS
-  json::Value& mlist = versions["custom"];
-  std::vector<std::string> mapnames;
-  for (auto fn : names) {
-    istring ext = path::ext(fn);
-    if (ext == ".w3x" || ext == ".w3m") {
-      mapnames.push_back(fn);
-    }
-  }
-  for (auto fn : Logger::loop(mapnames)) {
-    auto hash = pathHash(fn.c_str());
-    if (File mf = loader.load(fn.c_str())) {
-      fn = std::string(fn).substr(0, fn.length() - 4);
-      for (auto& c : fn) {
-        if (c == '\\' || c == '/') {
-          c = '~';
-        }
-      }
-
-      MapParser parser(meta, mf);
-      auto pf = parser.processAll();
-      File(fmtstring("maps/%s.gzx", fn.c_str()).c_str(), "wb").copy(pf);
-
-      std::string name = parser.info["name"].getString();
-      std::string desc = parser.info["description"].getString();
-
-      auto& mdata = mlist[fmtstring("%016llx", hash)];
-      mdata["name"] = name;
-      mdata["data"] = fmtstring("maps/%s.gzx", fn.c_str());
-      mdata["desc"] = desc;
-    }
-  }
-  json::write(File(path::root() / "versions.json", "wb"), versions);
-#endif
-
-#else
-  File meta(path::root() / "meta.gzx", "rb");
-  File map(path::root() / "war.w3m", "rb");
-  MapParser parser(meta, map);
-
-  uint32 t0 = GetTickCount();
-  parser.onProgress = [&](unsigned int stage) {
-    uint32 t1 = GetTickCount();
-    Logger::log("Stage %u - %.3f ms\n", stage, float(t1 - t0) / 1000.0f);
-    t0 = t1;
-  };
-
-  auto pf = parser.processAll();
-  File("map.gzx", "wb").copy(pf);
-
-  //HashArchive arc(File(path::root() / "map.gzx"));
-  //jass::Options opt;
-  //jass::JASSDo jd(arc, opt);
-  //auto mf = jd.process();
-  //File(path::root() / "war3map.j", "wb").copy(mf);
-#endif
-
+  data.write_maps();
+//
+//#else
+//  File meta(path::root() / "meta.gzx", "rb");
+//  File map(path::root() / "war.w3m", "rb");
+//  MapParser parser(meta, map);
+//
+//  uint32 t0 = GetTickCount();
+//  parser.onProgress = [&](unsigned int stage) {
+//    uint32 t1 = GetTickCount();
+//    Logger::log("Stage %u - %.3f ms\n", stage, float(t1 - t0) / 1000.0f);
+//    t0 = t1;
+//  };
+//
+//  auto pf = parser.processAll();
+//  File("map.gzx", "wb").copy(pf);
+//
+//  //HashArchive arc(File(path::root() / "map.gzx"));
+//  //jass::Options opt;
+//  //jass::JASSDo jd(arc, opt);
+//  //auto mf = jd.process();
+//  //File(path::root() / "war3map.j", "wb").copy(mf);
+//#endif
+//
   return 0;
 }

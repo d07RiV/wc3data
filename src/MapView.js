@@ -1,6 +1,7 @@
 import React from 'react';
 import AppCache from 'data/cache';
 import ModelViewer from 'mdx';
+import { withAsync } from 'utils';
 import { AutoSizer } from 'react-virtualized';
 
 import { vec3, mat4 } from 'gl-matrix';
@@ -9,10 +10,35 @@ const v3pos = vec3.create(), v3dir = vec3.create(), v3up = vec3.create(), v3sub 
 const m4rot = mat4.create();
 const f32rot = new Float32Array(1);
 
+class SelectionWindow extends React.Component {
+  state = {x: 50, y: 50}
+  render() {
+    const { gameData, units, viewer, deselect } = this.props;
+    const style = {left: this.state.x, top: this.state.y};
+    if (!units.length) {
+      style.display = "none";
+    }
+    const misc = gameData.getSection('Misc');
+    const xpA = parseInt(misc.get('grantnormalxpformulaa'));
+    const xpB = parseInt(misc.get('grantnormalxpformulaa'));
+    const xpC = parseInt(misc.get('grantnormalxpformulaa'));
+    return (
+      <div className="Selection" style={style}>
+        <div className="Heading">Selection</div>
+        Selected units: {units.length}
+      </div>
+    );
+  }
+}
+const AsyncSelectionWindow = withAsync({
+  gameData: ({gameData}) => gameData
+}, SelectionWindow);
+
 export default class MapHome extends React.Component {
   static contextType = AppCache.DataContext;
   state = {
     notifications: [],
+    selection: [],
   }
 
   yaw = 0;
@@ -21,6 +47,17 @@ export default class MapHome extends React.Component {
   center = vec3.create();
   minDistance = 500;
   maxDistance = 20000;
+
+  constructor(props, context) {
+    super(props, context);
+    const dataPath = "Units\\MiscGame.txt";
+    if (context.hasFile(dataPath)) {
+      this.gameData = Promise.resolve(context.file(dataPath));
+    } else {
+      this.gameData = fetch(context.cache.binary(dataPath)).then(b => b.text());
+    }
+    this.gameData = this.gameData.then(text => new ModelViewer.parsers.ini.IniFile(text));
+  }
   
   componentWillUnmount() {
     if (this.frame) {
@@ -37,7 +74,7 @@ export default class MapHome extends React.Component {
     document.addEventListener("mousemove", this.onMouseMove, true);
     document.addEventListener("mouseup", this.onMouseUp, true);
     this.dragStart = this.dragPos = {x: e.clientX, y: e.clientY};
-    this.dragButton = (e.ctrlKey ? 2 : 0);
+    this.dragButton = (e.ctrlKey ? 2 : (e.shiftKey ? 1 : 0));
     e.preventDefault();
   }
   onMouseMove = e => {
@@ -56,6 +93,22 @@ export default class MapHome extends React.Component {
         }
         this.pitch = Math.min(this.pitch, 0);
         this.pitch = Math.max(this.pitch, -Math.PI / 2 + 0.05);
+      } else if (this.dragButton === 1) {
+        let rc = this.canvas.getBoundingClientRect();
+        let x0 = Math.min(this.dragStart.x, this.dragPos.x) - rc.left;
+        let y0 = Math.min(this.dragStart.y, this.dragPos.y) - rc.top;
+        let x1 = Math.max(this.dragStart.x, this.dragPos.x) - rc.left;
+        let y1 = Math.max(this.dragStart.y, this.dragPos.y) - rc.top;
+        if (this.viewer) {
+          this.dragSelection = this.viewer.selectUnits(x0, y0, x1, y1);
+        }
+        if (this.selrect) {
+          this.selrect.style.display = 'block';
+          this.selrect.style.left = `${x0}px`;
+          this.selrect.style.top = `${y0}px`;
+          this.selrect.style.width = `${x1 - x0}px`;
+          this.selrect.style.height = `${y1 - y0}px`;
+        }
       } else if (this.dragButton === 0) {
         const vx = vec3.fromValues(-Math.cos(this.yaw), Math.sin(this.yaw), 0);
         const vy = vec3.fromValues(vx[1], -vx[0], 0);
@@ -71,9 +124,17 @@ export default class MapHome extends React.Component {
     if (this.dragPos && this.viewer) {
       if (this.dragButton === 0 && Math.abs(this.dragPos.x - this.dragStart.x) < 5 && Math.abs(this.dragPos.y - this.dragStart.y) < 5) {
         let rc = this.canvas.getBoundingClientRect();
-        this.viewer.selectUnit(e.clientX - rc.left, e.clientY - rc.top);
+        let unit = this.viewer.selectUnit(e.clientX - rc.left, e.clientY - rc.top);
+        this.setState({selection: unit ? [unit] : []});
       }
       delete this.dragPos;
+    }
+    if (this.dragSelection) {
+      this.setState({selection: this.dragSelection});
+      delete this.dragSelection;
+    }
+    if (this.selrect) {
+      this.selrect.style.display = 'none';
     }
     this.removeEvents();
     e.preventDefault();
@@ -202,8 +263,15 @@ export default class MapHome extends React.Component {
     this.frame = requestAnimationFrame(this.animate);
   }
 
+  deselect = () => {
+    if (this.viewer) {
+      this.viewer.deselect();
+    }
+    this.setState({selection: []});
+  }
+
   render() {
-    const { notifications } = this.state;
+    const { notifications, selection } = this.state;
     return (
       <div className="ModelPage">
         <div className="FileModel">
@@ -219,12 +287,14 @@ export default class MapHome extends React.Component {
               />
             )}
           </AutoSizer>
+          <div className="selRect" ref={n => this.selrect = n}/>
           <ul className="log">
             {notifications.map(({text, type, expiring}, idx) => <li key={idx} className={type + (expiring ? " expiring" : "")}>{text}</li>)}
           </ul>
           <div className="credits">
             Model viewer by <a href="https://github.com/flowtsohg/mdx-m3-viewer" target="_blank">flowtsohg@github</a>
           </div>
+          <AsyncSelectionWindow gameData={this.gameData} units={selection} viewer={this.viewer} deselect={this.deselect}/>
         </div>
       </div>
     );
