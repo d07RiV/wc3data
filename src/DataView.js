@@ -25,7 +25,7 @@ const DataView = () => (
       if (data.isMap) {
         return (
           <Title title={data.name}>
-            {views};
+            {views}
           </Title>
         )
       } else {

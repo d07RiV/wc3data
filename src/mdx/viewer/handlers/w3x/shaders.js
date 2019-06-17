@@ -48,12 +48,12 @@ export default {
         vec2 halfPixel = vec2(0.5, 0.5) * u_pixel;
         vec2 corner = vec2(mod(a_InstanceID, u_size.x), floor(a_InstanceID / u_size.x));
         vec2 base = floor(corner + a_position);
-        float height = texture2D(u_heightMap, base * u_pixel + halfPixel).a;
+        float height = texture2D(u_heightMap, base * u_pixel + halfPixel).COMP1D;
 
-        float hL = texture2D(u_heightMap0, vec2(base - vec2(normalDist, 0.0)) * u_pixel + halfPixel).a;
-        float hR = texture2D(u_heightMap0, vec2(base + vec2(normalDist, 0.0)) * u_pixel + halfPixel).a;
-        float hD = texture2D(u_heightMap0, vec2(base - vec2(0.0, normalDist)) * u_pixel + halfPixel).a;
-        float hU = texture2D(u_heightMap0, vec2(base + vec2(0.0, normalDist)) * u_pixel + halfPixel).a;
+        float hL = texture2D(u_heightMap0, vec2(base - vec2(normalDist, 0.0)) * u_pixel + halfPixel).COMP1D;
+        float hR = texture2D(u_heightMap0, vec2(base + vec2(normalDist, 0.0)) * u_pixel + halfPixel).COMP1D;
+        float hD = texture2D(u_heightMap0, vec2(base - vec2(0.0, normalDist)) * u_pixel + halfPixel).COMP1D;
+        float hU = texture2D(u_heightMap0, vec2(base + vec2(0.0, normalDist)) * u_pixel + halfPixel).COMP1D;
 
         v_normal = normalize(vec3(hL - hR, hD - hU, normalDist * 2.0));
 
@@ -94,7 +94,7 @@ export default {
       color = blend(color, v_uv[2]);
       color = blend(color, v_uv[3]);
 
-      float shadow = texture2D(u_shadowMap, v_suv).a;
+      float shadow = texture2D(u_shadowMap, v_suv).COMP1D;
       color.xyz *= clamp(dot(v_normal, lightDirection) + 0.45, 0.0, 1.0);
       color.xyz *= 1.0 - shadow;
 
@@ -135,8 +135,8 @@ export default {
 
         vec2 halfPixel = vec2(0.5, 0.5) * u_pixel;
         vec2 base = corner + a_position;
-        float height = texture2D(u_heightMap, base * u_pixel + halfPixel).a;
-        float waterHeight = texture2D(u_waterHeightMap, base * u_pixel + halfPixel).a + u_offsetHeight;
+        float height = texture2D(u_heightMap, base * u_pixel + halfPixel).COMP1D;
+        float waterHeight = texture2D(u_waterHeightMap, base * u_pixel + halfPixel).COMP1D + u_offsetHeight;
         float value = clamp(waterHeight - height, 0.0, 1.0);
 
         if (value <= deepLevel) {
@@ -205,12 +205,12 @@ export default {
       // The bottom left corner of the map tile this vertex is on.
       vec2 corner = ((a_instancePosition.xy - u_centerOffset.xy + position.xy) / 128.0);
 
-      float height = texture2D(u_heightMap, corner * u_pixel + halfPixel).a;
+      float height = texture2D(u_heightMap, corner * u_pixel + halfPixel).COMP1D;
 
-      float hL = texture2D(u_heightMap, vec2(corner - vec2(normalDist, 0.0)) * u_pixel + halfPixel).a;
-      float hR = texture2D(u_heightMap, vec2(corner + vec2(normalDist, 0.0)) * u_pixel + halfPixel).a;
-      float hD = texture2D(u_heightMap, vec2(corner - vec2(0.0, normalDist)) * u_pixel + halfPixel).a;
-      float hU = texture2D(u_heightMap, vec2(corner + vec2(0.0, normalDist)) * u_pixel + halfPixel).a;
+      float hL = texture2D(u_heightMap, vec2(corner - vec2(normalDist, 0.0)) * u_pixel + halfPixel).COMP1D;
+      float hR = texture2D(u_heightMap, vec2(corner + vec2(normalDist, 0.0)) * u_pixel + halfPixel).COMP1D;
+      float hD = texture2D(u_heightMap, vec2(corner - vec2(0.0, normalDist)) * u_pixel + halfPixel).COMP1D;
+      float hU = texture2D(u_heightMap, vec2(corner + vec2(0.0, normalDist)) * u_pixel + halfPixel).COMP1D;
 
       v_normal1 = normalize(vec3(hL - hR, hD - hU, normalDist * 2.0));
       v_normal2 = vec3(a_normal.y, -a_normal.x, a_normal.z);
@@ -259,7 +259,7 @@ export default {
       height = height * height;
       vec3 normal = normalize(mix(v_normal2, v_normal1, height));
 
-      float shadow = texture2D(u_shadowMap, v_suv).a;
+      float shadow = texture2D(u_shadowMap, v_suv).COMP1D;
       color.xyz *= clamp(dot(normal, lightDirection) + 0.45, 0.1, 1.0);
       color.xyz *= 1.0 - shadow;
 
@@ -287,12 +287,12 @@ export default {
       vec2 halfPixel = u_pixel * 0.5;
 
       vec2 base = (a_position.xy - u_centerOffset) / 128.0;
-      float height = texture2D(u_heightMap, base * u_pixel + halfPixel).a;
+      float height = texture2D(u_heightMap, base * u_pixel + halfPixel).COMP1D;
 
-      float hL = texture2D(u_heightMap, vec2(base - vec2(normalDist, 0.0)) * u_pixel + halfPixel).a;
-      float hR = texture2D(u_heightMap, vec2(base + vec2(normalDist, 0.0)) * u_pixel + halfPixel).a;
-      float hD = texture2D(u_heightMap, vec2(base - vec2(0.0, normalDist)) * u_pixel + halfPixel).a;
-      float hU = texture2D(u_heightMap, vec2(base + vec2(0.0, normalDist)) * u_pixel + halfPixel).a;
+      float hL = texture2D(u_heightMap, vec2(base - vec2(normalDist, 0.0)) * u_pixel + halfPixel).COMP1D;
+      float hR = texture2D(u_heightMap, vec2(base + vec2(normalDist, 0.0)) * u_pixel + halfPixel).COMP1D;
+      float hD = texture2D(u_heightMap, vec2(base - vec2(0.0, normalDist)) * u_pixel + halfPixel).COMP1D;
+      float hU = texture2D(u_heightMap, vec2(base + vec2(0.0, normalDist)) * u_pixel + halfPixel).COMP1D;
 
       v_normal = normalize(vec3(hL - hR, hD - hU, normalDist * 2.0));
       v_uv = a_uv;
@@ -315,7 +315,7 @@ export default {
     void main() {
       vec4 color = texture2D(u_texture, clamp(v_uv, 0.0, 1.0)).rgba * u_color;
 
-      float shadow = texture2D(u_shadowMap, v_suv).a;
+      float shadow = texture2D(u_shadowMap, v_suv).COMP1D;
       color.xyz *= clamp(dot(v_normal, lightDirection) + 0.45, 0.0, 1.0);
       color.xyz *= 1.0 - shadow;
 

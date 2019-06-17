@@ -29,7 +29,13 @@ export default class WebGL {
    * @param {?Object} options
    */
   constructor(canvas, options) {
-    let gl = canvas.getContext('webgl', options || {alpha: false});
+    let gl = canvas.getContext("webgl2", options || {alpha: false});
+    this.webgl2 = true;
+
+    if (!gl) {
+      gl = canvas.getContext('webgl', options || {alpha: false});
+      this.webgl2 = false;
+    }
 
     if (!gl) {
       gl = canvas.getContext('experimental-webgl', options || {alpha: false});
@@ -51,17 +57,38 @@ export default class WebGL {
       throw new Error('WebGL: No vertex shader texture support!');
     }
 
-    if (!extensions.textureFloat) {
+    if (!this.webgl2 && !extensions.textureFloat) {
       throw new Error('WebGL: No floating point texture support!');
     }
 
-    if (!extensions.instancedArrays) {
+    if (!this.webgl2 && !extensions.instancedArrays) {
       throw new Error('WebGL: No instanced rendering support!');
+    } else if (this.webgl2) {
+      extensions.instancedArrays = {
+        VERTEX_ATTRIB_ARRAY_DIVISOR_ANGLE: gl.VERTEX_ATTRIB_ARRAY_DIVISOR,
+        drawArraysInstancedANGLE: gl.drawArraysInstanced.bind(gl),
+        drawElementsInstancedANGLE: gl.drawElementsInstanced.bind(gl),
+        vertexAttribDivisorANGLE: gl.vertexAttribDivisor.bind(gl),
+      };
     }
 
-    if (!extensions.compressedTextureS3tc) {
-      console.warn('WebGL: No compressed textures support! This might reduce performance.');
+    if (!this.webgl2) {
+      const texImage2D = gl.texImage2D;
+      gl.RED = gl.ALPHA;
+      gl.RG = gl.LUMINANCE_ALPHA;
+      gl.texImage2D = function(target, level, internalformat, ...args) {
+        if (args.length > 3) {
+          internalformat = args[3];
+        } else {
+          internalformat = args[0];
+        }
+        return texImage2D.call(gl, target, level, internalformat, ...args);
+      };
     }
+
+    //if (!this.webgl2 && !extensions.compressedTextureS3tc) {
+    //  console.warn('WebGL: No compressed textures support! This might reduce performance.');
+    //}
 
     gl.extensions = extensions;
 
@@ -81,6 +108,12 @@ export default class WebGL {
     this.currentShaderProgram = null;
     /** @member {string} */
     this.floatPrecision = 'precision mediump float;\n';
+    this.shaderDefines = '';
+    if (this.webgl2) {
+      this.shaderDefines += '#define COMP1D r\n';
+    } else {
+      this.shaderDefines += '#define COMP1D a\n';      
+    }
 
     // An empty 2x2 texture that is used automatically when binding an invalid texture
     let imageData = new ImageData(2, 2);
@@ -129,8 +162,8 @@ export default class WebGL {
    */
   createShaderProgram(vertexSrc, fragmentSrc) {
     let gl = this.gl;
-    let vertexShader = this.createShaderUnit(vertexSrc, gl.VERTEX_SHADER);
-    let fragmentShader = this.createShaderUnit(this.floatPrecision + fragmentSrc, gl.FRAGMENT_SHADER);
+    let vertexShader = this.createShaderUnit(this.shaderDefines + vertexSrc, gl.VERTEX_SHADER);
+    let fragmentShader = this.createShaderUnit(this.floatPrecision + this.shaderDefines + fragmentSrc, gl.FRAGMENT_SHADER);
     let shaderPrograms = this.shaderPrograms;
 
     if (vertexShader.ok && fragmentShader.ok) {
