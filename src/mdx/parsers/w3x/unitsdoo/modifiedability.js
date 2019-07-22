@@ -18,7 +18,7 @@ export default class ModifiedAbility {
    * @param {BinaryStream} stream
    */
   load(stream) {
-    this.id = stream.read(4);
+    this.id = stream.read(4, true);
     this.activeForAutocast = stream.readInt32();
     this.heroLevel = stream.readInt32();
   }

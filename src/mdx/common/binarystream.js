@@ -90,18 +90,22 @@ export default class BinaryStream {
   peek(size, allowNulls) {
     let uint8array = this.uint8array;
     let index = this.index;
-    let data = '';
+    let codes = [];
+
+    if (index + size > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
 
     for (let i = 0; i < size; i++) {
       let b = uint8array[index + i];
 
       // Avoid \0
       if (allowNulls || b > 0) {
-        data += String.fromCharCode(b);
+        codes.push(b);
       }
     }
 
-    return data;
+    return String.fromCharCode(...codes);
   }
 
   /**
@@ -130,18 +134,15 @@ export default class BinaryStream {
   peekUntilNull() {
     let uint8array = this.uint8array;
     let index = this.index;
-    let data = '';
     let b = uint8array[index];
     let i = 0;
 
-    while (b !== 0) {
-      data += String.fromCharCode(b);
-
+    while (b !== 0 && index + i < uint8array.length) {
       i += 1;
       b = uint8array[index + i];
     }
 
-    return data;
+    return String.fromCharCode(...uint8array.subarray(index, index + i));
   }
 
   /**
@@ -168,6 +169,10 @@ export default class BinaryStream {
     let uint8array = this.uint8array;
     let index = this.index;
     let data = [];
+
+    if (index + size > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
 
     for (let i = 0; i < size; i++) {
       data[i] = String.fromCharCode(uint8array[index + i]);
@@ -198,6 +203,11 @@ export default class BinaryStream {
   readInt8() {
     let index = this.index;
     let uint8array = this.uint8array;
+
+    if (index + 1 > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
+
     let data = uint8ToInt8(uint8array[index]);
 
     this.index += 1;
@@ -213,6 +223,11 @@ export default class BinaryStream {
   readInt16() {
     let index = this.index;
     let uint8array = this.uint8array;
+
+    if (index + 2 > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
+
     let data = uint8ToInt16(uint8array[index], uint8array[index + 1]);
 
     this.index += 2;
@@ -228,6 +243,11 @@ export default class BinaryStream {
   readInt32() {
     let index = this.index;
     let uint8array = this.uint8array;
+
+    if (index + 4 > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
+
     let data = uint8ToInt32(uint8array[index], uint8array[index + 1], uint8array[index + 2], uint8array[index + 3]);
 
     this.index += 4;
@@ -241,6 +261,10 @@ export default class BinaryStream {
    * @return {number}
    */
   readUint8() {
+    if (this.index + 1 > this.uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
+
     let data = this.uint8array[this.index];
 
     this.index += 1;
@@ -256,6 +280,10 @@ export default class BinaryStream {
   readUint16() {
     let index = this.index;
     let uint8array = this.uint8array;
+    if (index + 2 > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
+
     let data = uint8ToUint16(uint8array[index], uint8array[index + 1]);
 
     this.index += 2;
@@ -271,6 +299,10 @@ export default class BinaryStream {
   readUint32() {
     let index = this.index;
     let uint8array = this.uint8array;
+    if (index + 4 > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
+
     let data = uint8ToUint32(uint8array[index], uint8array[index + 1], uint8array[index + 2], uint8array[index + 3]);
 
     this.index += 4;
@@ -286,6 +318,10 @@ export default class BinaryStream {
   readFloat32() {
     let index = this.index;
     let uint8array = this.uint8array;
+    if (index + 4 > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
+
     let data = uint8ToFloat32(uint8array[index], uint8array[index + 1], uint8array[index + 2], uint8array[index + 3]);
 
     this.index += 4;
@@ -301,6 +337,10 @@ export default class BinaryStream {
   readFloat64() {
     let index = this.index;
     let uint8array = this.uint8array;
+    if (index + 8 > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
+
     let data = uint8ToFloat64(uint8array[index], uint8array[index + 1], uint8array[index + 2], uint8array[index + 3], uint8array[index + 4], uint8array[index + 5], uint8array[index + 6], uint8array[index + 7]);
 
     this.index += 8;
@@ -321,6 +361,9 @@ export default class BinaryStream {
 
     let index = this.index;
     let uint8array = this.uint8array;
+    if (index + view.byteLength > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
 
     for (let i = 0, l = view.length; i < l; i++) {
       view[i] = uint8ToInt8(uint8array[index + i]);
@@ -344,6 +387,9 @@ export default class BinaryStream {
 
     let index = this.index;
     let uint8array = this.uint8array;
+    if (index + view.byteLength > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
 
     for (let i = 0, l = view.length; i < l; i++) {
       let offset = index + i * 2;
@@ -369,6 +415,9 @@ export default class BinaryStream {
 
     let index = this.index;
     let uint8array = this.uint8array;
+    if (index + view.byteLength > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
 
     for (let i = 0, l = view.length; i < l; i++) {
       let offset = index + i * 4;
@@ -394,6 +443,9 @@ export default class BinaryStream {
 
     let index = this.index;
     let uint8array = this.uint8array;
+    if (index + view.byteLength > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
 
     for (let i = 0, l = view.length; i < l; i++) {
       view[i] = uint8array[index + i];
@@ -417,6 +469,9 @@ export default class BinaryStream {
 
     let index = this.index;
     let uint8array = this.uint8array;
+    if (index + view.byteLength > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
 
     for (let i = 0, l = view.length; i < l; i++) {
       let offset = index + i * 2;
@@ -442,6 +497,9 @@ export default class BinaryStream {
 
     let index = this.index;
     let uint8array = this.uint8array;
+    if (index + view.byteLength > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
 
     for (let i = 0, l = view.length; i < l; i++) {
       let offset = index + i * 4;
@@ -467,6 +525,9 @@ export default class BinaryStream {
 
     let index = this.index;
     let uint8array = this.uint8array;
+    if (index + view.byteLength > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
 
     for (let i = 0, l = view.length; i < l; i++) {
       let offset = index + i * 4;
@@ -492,6 +553,9 @@ export default class BinaryStream {
 
     let index = this.index;
     let uint8array = this.uint8array;
+    if (index + view.byteLength > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
 
     for (let i = 0, l = view.length; i < l; i++) {
       let offset = index + i * 8;
@@ -510,9 +574,12 @@ export default class BinaryStream {
    * @param {ArrayBufferView} view
    */
   readTypedArray(view) {
-    let buffer = new Uint8Array(view.buffer);
+    let buffer = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
     let index = this.index;
     let uint8array = this.uint8array;
+    if (index + buffer.length > uint8array.length) {
+      throw new RangeError(`BinaryStream: read outside of range`);
+    }
 
     for (let i = 0, l = buffer.length; i < l; i++) {
       buffer[i] = uint8array[index + i];

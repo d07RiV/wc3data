@@ -36,7 +36,7 @@ export default class Region {
     this.top = stream.readFloat32();
     this.name = stream.readUntilNull();
     this.creationNumber = stream.readUint32();
-    this.weatherEffectId = stream.read(4);
+    this.weatherEffectId = stream.read(4, true);
     this.ambientSound = stream.readUntilNull();
     this.color = stream.readUint8Array(4);
   }

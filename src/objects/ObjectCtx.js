@@ -12,10 +12,9 @@ export const RawNamesSwitch = React.createContext(undefined);
 export const ObjectIcon = ({object}) => (
   <AppCache.DataContext.Consumer>
     {cache => {
-      if (object.icon == null) {
+      if (!object || object.icon == null) {
         return null;
       }
-      debugger;
       const icon = cache.icon(object.icon);
       return <span className="Icon" style={icon}/>;
     }}
@@ -142,6 +141,34 @@ export const TechList = {
   "TWN9": "Any Tier 9 Hall",
 };
 
+export function getString(object, col, index=-1) {
+  const text = object.data[col.toLowerCase()] || "";
+  if (index < 0) {
+    const cmp = nextComma(text, -1);
+    if (cmp >= 2 && cmp >= text.length && text[0] === '"' && text[cmp - 1] === '"') {
+      return text.substr(1, cmp - 2);
+    } else {
+      return text;
+    }
+  } else {
+    let pos = -1;
+    let cur = 0;
+    let prev = 0;
+    while ((pos = nextComma(text, pos)) >= 0) {
+      if (cur === index) {
+        if (pos - prev >= 2 && text[prev] === '"' && text[pos - 1] === '"') {
+          return text.substr(prev + 1, pos - prev - 2);
+        } else {
+          return text.substr(prev, pos - prev);
+        }
+      }
+      prev = pos + 1;
+      cur++;
+    }
+    return "";
+  }
+}
+
 export function listObjectData(object, data, rawNames, callback) {
   const type = object.type === "item" ? "unit" : object.type;
   const meta = data.meta[type] || [];
@@ -158,33 +185,6 @@ export function listObjectData(object, data, rawNames, callback) {
     return meta.display.replace("%s", name);
   };
 
-  const getString = (col, index=-1) => {
-    const text = object.data[col.toLowerCase()] || "";
-    if (index < 0) {
-      const cmp = nextComma(text, -1);
-      if (cmp >= 2 && cmp >= text.length && text[0] === '"' && text[cmp - 1] === '"') {
-        return text.substr(1, cmp - 2);
-      } else {
-        return text;
-      }
-    } else {
-      let pos = -1;
-      let cur = 0;
-      let prev = 0;
-      while ((pos = nextComma(text, pos)) >= 0) {
-        if (cur === index) {
-          if (pos - prev >= 2 && text[prev] === '"' && text[pos - 1] === '"') {
-            return text.substr(prev + 1, pos - prev - 2);
-          } else {
-            return text.substr(prev, pos - prev);
-          }
-        }
-        prev = pos + 1;
-        cur++;
-      }
-      return "";
-    }
-  };
   const getInt = col => {
     col = col.toLowerCase();
     return object.data[col] && parseInt(object.data[col], 10) || 0;
@@ -252,11 +252,11 @@ export function listObjectData(object, data, rawNames, callback) {
             fname += (i + 1);
           }
         }
-        const value = (row.index < 0 ? getString(fname, -1) : getString(field, i));
+        const value = (row.index < 0 ? getString(object, fname, -1) : getString(object, field, i));
         callback(`${field}${i}`, rawNames ? fname : `Level ${i + 1} - ${data.categories[row.category]} - ${metaNames.get(row)}`, value, row);
       }
     } else {
-      const value = getString(field, row.index);
+      const value = getString(object, field, row.index);
       callback(`${field}${row.index}`, rawNames ? field : `${data.categories[row.category]} - ${metaNames.get(row)}`, value, row);
     }
   });

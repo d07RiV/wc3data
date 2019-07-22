@@ -130,7 +130,7 @@
     > div {
       position: absolute;
       left: -1px;
-      background-color: rgba(0,0,0,0.8);
+      background-color: rgba(0,0,32,0.8);
       color: #fff;
       padding: 8px;
       font-family: 'QuadratSerial';
@@ -167,5 +167,31 @@
   img {
     width: 64px;
     height: 64px;
+  }
+}
+
+.ObjectTooltip {
+  position: absolute;
+  z-index: 100;
+  padding: 6px;
+  background-color: rgba(0, 0, 32, 0.8);
+  color: #fff;
+  font-size: 15px;
+  font-family: 'QuadratSerial';
+  border-radius: 6px;
+  max-width: 360px;
+  white-space: normal;
+  border: 2px groove #fc0;
+  .ObjectIcon {
+    position: absolute;
+    top: 0;
+    left: -70px;
+    width: 64px;
+    height: 64px;
+    pointer-events: none;
+    display: none;
+    &.visible {
+      display: block;
+    }
   }
 }

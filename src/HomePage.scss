@@ -11,19 +11,63 @@
     .Heading {
       margin: -6px -6px 4px -6px;
       border-radius: 6px;
-      background: rgba(64, 64, 64, 0.5);
+      background: rgba(64, 64, 64, 0.8);
       cursor: all-scroll;
       padding: 0 6px;
       font-size: 120%;
       font-weight: bold;
       text-align: center;
+      user-select: none;
+    }
+    .Icon {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      background-repeat: no-repeat;
+      margin: -2px 2px -2px 0;
+      z-index: 1;
+      position: relative;
+    }
+    .Body {
+      max-height: 500px;
+      overflow-y: auto;
+      .name {
+        font-size: 1.2em;
+        font-weight: bold;
+      }
+      .ItemDrops {
+        > li > span {
+          font-weight: bold;
+        }
+        padding-left: 1em;
+      }
+      .ItemDrop {
+        padding-left: 1em;
+      }
+      a {
+        font-weight: normal;
+        color: #94cdff;
+        cursor: pointer;
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+      .listToggle {
+        margin-left: 5px;
+        font-weight: normal;
+        color: #94cdff;
+        cursor: pointer;
+        &:hover {
+          text-decoration: underline;
+        }
+      }
     }
     position: absolute;
     z-index: 8;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(64, 64, 64, 0.5);
     color: #fff;
     border-radius: 6px;
-    padding: 6px;
+    padding: 6px 6px 0 6px;
   }
 }
 .HomePage {

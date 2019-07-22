@@ -17,7 +17,7 @@ export default class InventoryItem {
    */
   load(stream) {
     this.slot = stream.readInt32();
-    this.id = stream.read(4);
+    this.id = stream.read(4, true);
   }
 
   /**

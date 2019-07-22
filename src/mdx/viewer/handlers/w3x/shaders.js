@@ -225,7 +225,6 @@ export default {
     }
   `,
   fsCliffs: `
-    #extension GL_OES_standard_derivatives : enable
     uniform sampler2D u_texture1;
     uniform sampler2D u_texture2;
     uniform sampler2D u_shadowMap;
@@ -313,6 +312,9 @@ export default {
     const vec3 lightDirection = normalize(vec3(-0.3, -0.3, 0.25));
 
     void main() {
+      if (any(bvec4(lessThan(v_uv, vec2(0.0)), greaterThan(v_uv, vec2(1.0))))) {
+        discard;
+      }
       vec4 color = texture2D(u_texture, clamp(v_uv, 0.0, 1.0)).rgba * u_color;
 
       float shadow = texture2D(u_shadowMap, v_suv).COMP1D;

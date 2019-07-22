@@ -290,10 +290,12 @@ export default class War3MapViewer extends ModelViewer {
 
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, this.cliffTextures[0].webglResource);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 
       if (this.cliffTextures.length > 1) {
         gl.activeTexture(gl.TEXTURE2);
         gl.bindTexture(gl.TEXTURE_2D, this.cliffTextures[1].webglResource);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
       }
 
       gl.activeTexture(gl.TEXTURE3);
@@ -446,6 +448,7 @@ export default class War3MapViewer extends ModelViewer {
     let wc3PathSolver = this.wc3PathSolver;
 
     let w3i = new War3MapW3i(this.mapMpq.get('war3map.w3i').arrayBuffer());
+    this.w3i = w3i;
     this.tileset = w3i.tileset;
     this.editorVersion = w3i.editorVersion;
     this.mapBounds = w3i.cameraBoundsComplements;
@@ -555,6 +558,14 @@ export default class War3MapViewer extends ModelViewer {
 
       fileVar += '.mdx';
 
+      let color = [255, 255, 255];
+
+      if (type === 'destructible') {
+        color[0] = parseInt(row.colorr);
+        color[1] = parseInt(row.colorg);
+        color[2] = parseInt(row.colorb);
+      }
+
       if (type === 'destructible' && row.shadow && row.shadow !== "_") {
         this.addShadow(row.shadow, doodad.location[0], doodad.location[1]);
       }
@@ -587,8 +598,11 @@ export default class War3MapViewer extends ModelViewer {
         instance.scale(doodad.scale);
         instance.setScene(scene);
         if (!this.inPlayableArea(doodad.location[0], doodad.location[1])) {
-          instance.setVertexColor([51, 51, 51]);
+          color[0] = Math.round(color[0] * 51 / 255);
+          color[1] = Math.round(color[1] * 51 / 255);
+          color[2] = Math.round(color[2] * 51 / 255);
         }
+        instance.setVertexColor(color);
   
         standOnRepeat(instance);
       });
@@ -626,11 +640,14 @@ export default class War3MapViewer extends ModelViewer {
         teamColor += 12;
       }
       let row = null;
+      let color = [255, 255, 255];
+
       if (unit.id === 'sloc') {
         path = 'Objects\\StartLocation\\StartLocation.mdx';
       } else {
         row = this.unitsData.find(row => row.id === unit.id);
         if (!row) continue;
+        const type = row.type;
         row = row.data;
 
         path = row.file;
@@ -647,6 +664,16 @@ export default class War3MapViewer extends ModelViewer {
           teamColor = rowTeamColor;
         }
 
+        if (type === 'unit') {
+          color[0] = parseInt(row.red);
+          color[1] = parseInt(row.green);
+          color[2] = parseInt(row.blue);
+        } else if (type === 'item') {
+          color[0] = parseInt(row.colorr);
+          color[1] = parseInt(row.colorg);
+          color[2] = parseInt(row.colorb);
+        }
+  
         let rowMoveHeight = row.moveheight && parseFloat(row.moveheight);
         if (rowMoveHeight) {
           location = vec3.clone(unit.location);
@@ -697,8 +724,11 @@ export default class War3MapViewer extends ModelViewer {
         instance.setTeamColor(teamColor);
         instance.setScene(scene);
         if (!this.inPlayableArea(location[0], location[1])) {
-          instance.setVertexColor([51, 51, 51]);
+          color[0] = Math.round(color[0] * 51 / 255);
+          color[1] = Math.round(color[1] * 51 / 255);
+          color[2] = Math.round(color[2] * 51 / 255);
         }
+        instance.setVertexColor(color);
 
         if (row) {
           this.units.push({unit, instance, location, radius: parseFloat(row.scale || "0") * 36});
@@ -1734,7 +1764,7 @@ export default class War3MapViewer extends ModelViewer {
 
     let splats = {};
 
-    this.selected = units.filter(unit => {
+    this.selected = units.filter(({unit}) => {
       let row = this.unitsData.find(row => row.id === unit.id);
       if (!row) return false;
       row = row.data;
@@ -1771,7 +1801,7 @@ export default class War3MapViewer extends ModelViewer {
     });
   }
 
-  selectUnit(x, y) {
+  selectUnit(x, y, toggle) {
     let ray = new Float32Array(6);
     this.camera.screenToWorldRay(ray, [x, y]);
     let dir = normalHeap1;
@@ -1802,8 +1832,22 @@ export default class War3MapViewer extends ModelViewer {
         entDist = dp;
       }
     });
-    this.doSelectUnits(entity ? [entity.unit] : []);
-    return entity;
+    let sel = [];
+    if (entity) {
+      if (toggle) {
+        sel = this.selected.slice();
+        const idx = sel.indexOf(entity);
+        if (idx >= 0) {
+          sel.splice(idx, 1);
+        } else {
+          sel.push(entity);
+        }
+      } else {
+        sel = [entity];
+      }
+    }
+    this.doSelectUnits(sel);
+    return sel;
   }
 
   selectUnits(x0, y0, x1, y1) {
@@ -1821,7 +1865,7 @@ export default class War3MapViewer extends ModelViewer {
       }
       return false;
     });
-    this.doSelectUnits(sel.map(e => e.unit));
+    this.doSelectUnits(sel);
     return sel;
   }
 }

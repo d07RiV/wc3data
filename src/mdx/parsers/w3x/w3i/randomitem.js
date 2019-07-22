@@ -17,7 +17,7 @@ export default class RandomItem {
    */
   load(stream) {
     this.chance = stream.readInt32();
-    this.id = stream.read(4);
+    this.id = stream.read(4, true);
   }
 
   /**

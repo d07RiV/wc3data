@@ -18,7 +18,7 @@ export default class AnimatedObject {
    */
   readAnimations(stream, size) {
     while (size > 0) {
-      let name = stream.read(4);
+      let name = stream.read(4, true);
       let animation = new animationMap[name][1]();
 
       animation.readMdx(stream, name);

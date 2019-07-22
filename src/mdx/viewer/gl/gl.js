@@ -29,16 +29,16 @@ export default class WebGL {
    * @param {?Object} options
    */
   constructor(canvas, options) {
-    let gl = canvas.getContext("webgl2", options || {alpha: false});
+    let gl = canvas.getContext("webgl2", options || {alpha: false, antialias: false});
     this.webgl2 = true;
 
     if (!gl) {
-      gl = canvas.getContext('webgl', options || {alpha: false});
+      gl = canvas.getContext('webgl', options || {alpha: false, antialias: false});
       this.webgl2 = false;
     }
 
     if (!gl) {
-      gl = canvas.getContext('experimental-webgl', options || {alpha: false});
+      gl = canvas.getContext('experimental-webgl', options || {alpha: false, antialias: false});
     }
 
     if (!gl) {
@@ -110,9 +110,11 @@ export default class WebGL {
     this.floatPrecision = 'precision mediump float;\n';
     this.shaderDefines = '';
     if (this.webgl2) {
-      this.shaderDefines += '#define COMP1D r\n';
+      this.shaderDefines += `#define COMP1D r
+`;
     } else {
-      this.shaderDefines += '#define COMP1D a\n';      
+      this.shaderDefines += `#define COMP1D a
+`;
     }
 
     // An empty 2x2 texture that is used automatically when binding an invalid texture

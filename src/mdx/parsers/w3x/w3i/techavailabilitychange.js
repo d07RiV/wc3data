@@ -17,7 +17,7 @@ export default class TechAvailabilityChange {
    */
   load(stream) {
     this.playerFlags = stream.readUint32();
-    this.id = stream.read(4);
+    this.id = stream.read(4, true);
   }
 
   /**

@@ -27,6 +27,7 @@ function load_file($type, $idhi, $idlo) {
   if ($data) {
     $data = array($data[0], filemtime($filename), $data[1]);
   }
+  return $data;
 }
 
 $type = $matches[1];

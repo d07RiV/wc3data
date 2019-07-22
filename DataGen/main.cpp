@@ -71,7 +71,7 @@ MemoryFile write_images(std::set<istring> const& names, CompositeLoader& loader,
       isMod = true;
     }
 
-	if (all && (ext == ".mdx" || ext == ".slk" || ext == ".txt" || ext == ".j")) {
+    if (all && (ext == ".mdx" || ext == ".slk" || ext == ".txt" || ext == ".j")) {
       File f = loader.load(fn.c_str());
       if (f) {
         mdxarc.add(hash, f, true);
@@ -240,7 +240,9 @@ struct CdnBuildData : public BuildData {
     istring tset = "War3.w3mod:_Tilesets\\";
 
     bool isMpq = true;
+    File ff(path::root() / "allnames.txt", "wb");
     for (auto fn : cdnloader->files()) {
+      ff.printf("%s\r\n", fn.c_str());
       if (istring(fn.substr(0, tset.size())) == tset) {
         fn = fn.substr(tset.size());
         isMpq = false;
@@ -258,9 +260,11 @@ struct CdnBuildData : public BuildData {
       loader.add(std::make_shared<PrefixLoader>("enUS-War3Local.mpq:", cdnloader));
       loader.add(std::make_shared<PrefixLoader>("War3.mpq:", cdnloader));
     } else {
-      loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Locales\\enUS.w3mod:_Balance\\Custom_V1.w3mod:", cdnloader));
+      //loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Locales\\enUS.w3mod:_Balance\\Custom_V1.w3mod:", cdnloader));
+      //loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Locales\\enUS.w3mod:_Balance\\Melee_V0.w3mod:", cdnloader));
       loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Locales\\enUS.w3mod:", cdnloader));
-      loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Balance\\Custom_V1.w3mod:", cdnloader));
+      //loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Balance\\Custom_V1.w3mod:", cdnloader));
+      //loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Balance\\Melee_V0.w3mod:", cdnloader));
       loader.add(std::make_shared<PrefixLoader>("War3.w3mod:_Tilesets\\", cdnloader));
       loader.add(std::make_shared<PrefixLoader>("War3.w3mod:", cdnloader));
     }
@@ -300,7 +304,7 @@ int main() {
 
   data.write_data(true, true);
 
-  data.write_maps();
+  //data.write_maps();
 //
 //#else
 //  File meta(path::root() / "meta.gzx", "rb");

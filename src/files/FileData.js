@@ -15,6 +15,49 @@ import FileAudioView from './FileAudio';
 import FileModelView from './FileModel';
 import FileJassView from './FileJass';
 
+import Formats from 'mdx/parsers/w3x';
+import { ObjectInspector, ObjectRootLabel, ObjectLabel, ObjectName, ObjectValue } from 'react-inspector';
+import ObjectPreviewEx from './ObjectPreviewEx';
+
+const gameFileTypes = {
+  "war3map.doo": Formats.doo.File,
+  "war3map.imp": Formats.imp.File,
+  "war3map.mmp": Formats.mmp.File,
+  "war3map.shd": Formats.shd.File,
+  "war3mapUnits.doo": Formats.unitsdoo.File,
+  "war3map.w3c": Formats.w3c.File,
+  "war3map.w3d": Formats.w3d.File,
+  "war3map.w3e": Formats.w3e.File,
+  "war3map.w3f": Formats.w3f.File,
+  "war3map.w3i": Formats.w3i.File,
+  "war3map.w3o": Formats.w3o.File,
+  "war3map.w3r": Formats.w3r.File,
+  "war3map.w3s": Formats.w3s.File,
+  "war3map.w3u": Formats.w3u.File,
+  "war3map.wct": Formats.wct.File,
+  "war3map.wpm": Formats.wpm.File,
+  "war3map.wtg": Formats.wtg.File,
+  "war3map.wts": Formats.wts.File,
+};
+    
+const nodeRenderer = ({ depth, name, data, isNonenumerable, expanded }) => {
+  if (depth === 0) {
+    if (typeof name === 'string') {
+      return (
+        <span>
+          <ObjectName name={name} />
+          <span>: </span>
+          <ObjectPreviewEx data={data} />
+        </span>
+      );
+    } else {
+      return <ObjectPreviewEx data={data} />;
+    }
+  } else {
+    return <ObjectLabel name={name} data={data} isNonenumerable={isNonenumerable} />;
+  }
+};
+
 export class FileData extends React.Component {
   constructor(props) {
     super(props);
@@ -64,6 +107,14 @@ export class FileData extends React.Component {
       if (this.image) {
         state.panel = "image";
       }
+      const name = this.getName();
+      if (gameFileTypes[name]) {
+        try {
+          this.data = new gameFileTypes[name](this.binary.buffer);
+          state.panel = "data";
+        } catch (e) {
+        }
+      }
     }
     this.state = state;
   }
@@ -84,6 +135,7 @@ export class FileData extends React.Component {
     case "audio": return <FileAudioView audio={this.audio}/>;
     case "model": return <FileModelView id={this.props.id}/>;
     case "image": return <FileImageView data={this.binary} image={this.image}/>;
+    case "data": return <ObjectInspector expandLevel={1} data={this.data}/>;
     default: return null;
     }
   }
@@ -140,6 +192,7 @@ export class FileData extends React.Component {
           {this.audio != null && this.makePanel("audio", "Audio")}
           {(this.flags & 8) !== 0 && this.makePanel("model", "Model")}
           {this.image != null && this.makePanel("image", "Image")}
+          {this.data != null && this.makePanel("data", "Data")}
         </ul>
         <div className={classNames("tab-pane", this.state.panel)}>
           {this.renderPane()}

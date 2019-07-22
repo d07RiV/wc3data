@@ -25,7 +25,7 @@ export default class Modification {
    * @param {number} useOptionalInts
    */
   load(stream, useOptionalInts) {
-    this.id = stream.read(4);
+    this.id = stream.read(4, true);
     this.variableType = stream.readInt32();
 
     if (useOptionalInts) {

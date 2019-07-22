@@ -10,6 +10,7 @@ function load_gzx($filename, $idhi, $idlo) {
   while ($right > $left) {
     $mid = (int)(($left + $right) / 2);
     $id = unpack('V2', substr($dir, $mid * 20, 8));
+
     if ($id[1] < 0) $id[1] += 4294967296;
     if ($id[2] < 0) $id[2] += 4294967296;
     if ($id[1] == $idlo && $id[2] == $idhi) {

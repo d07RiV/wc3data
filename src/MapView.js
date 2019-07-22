@@ -3,29 +3,254 @@ import AppCache from 'data/cache';
 import ModelViewer from 'mdx';
 import { withAsync } from 'utils';
 import { AutoSizer } from 'react-virtualized';
+import { Link } from 'react-router-dom';
 
 import { vec3, mat4 } from 'gl-matrix';
+
+import { ObjectIcon } from 'objects/ObjectCtx';
+import ObjectTooltip from 'objects/Tooltip';
+import pathHash from 'data/hash';
 
 const v3pos = vec3.create(), v3dir = vec3.create(), v3up = vec3.create(), v3sub = vec3.create();
 const m4rot = mat4.create();
 const f32rot = new Float32Array(1);
 
+/*
+YnI3 = level 3 campaign
+rde2
+YiI7 = level 7 permanent
+
+YYI/ = any item any level
+YiI/ = any permanent
+YnI/ = any campaign
+
+YYI5 = any level 5
+YoI5 = 5 misc
+YmI5 = 5 purchasable
+YlI5 = 5 artifact
+YkI5 = 5 power up
+YjI5 = 5 charged
+
+\0\0\0Q = first group
+ram3
+\0\0\0\0 = none
+
+\0\1\0Q = second group, pos 0
+\2\0\0Q = first group, pos 2
+*/
+
+const itemGroupTypes = {
+  'i': 'Permanent',
+  'n': 'Campaign',
+  'o': 'Miscellaneous',
+  'm': 'Purchasable',
+  'l': 'Artifact',
+  'k': 'PowerUp',
+  'j': 'Charged',
+};
+
+function computeDrops(unit, viewer) {
+  const drops = [];
+  function addTable({items}) {
+    const output = [];
+    function addItem(id, chance) {
+      const item = viewer.unitsData.find(unit => unit.id === id);
+      if (item && item.type === "item") {
+        output.push({item, chance});
+      } else if (id === '\0\0\0\0') {
+        return;
+      } else if (id[3] === 'Q') {
+        const tableId = id.charCodeAt(1) + id.charCodeAt(2) * 256;
+        const columnId = id.charCodeAt(0);
+        const table = viewer.w3i.randomUnitTables.find(tbl => tbl.id === tableId);
+        if (table) {
+          table.units.forEach(({chance: chance2, ids}) => {
+            if (ids[columnId]) {
+              addItem(ids[columnId], chance * chance2 / 100);
+            }
+          });
+        }
+      } else if (id[0] === 'Y' && id[2] === 'I') {
+        const type = itemGroupTypes[id[1]];
+        const level = (id[3] === '/' ? -1 : parseInt(id[3]));
+        const items = viewer.unitsData.filter(unit => {
+          if (unit.type === 'item') {
+            if (level >= 0 && parseInt(unit.data.level) !== level) {
+              return false;
+            }
+            if (type && unit.data.class !== type) {
+              return false;
+            }
+            return true;
+          } else {
+            return false;
+          }
+        });
+        output.push({name: `Random ${level >= 0 ? 'Level ' + level : 'Any Level'} ${type ? (type === 'PowerUp' ? 'Power Up Item' : type + ' Item') : 'Item'}`, chance, items});
+      }
+    }
+    items.forEach(({id, chance}) => addItem(id, chance));
+    drops.push(output);
+  }
+  if (unit.droppedItemTable >= 0) {
+    const table = viewer.w3i.randomItemTables.find(tbl => tbl.id === unit.droppedItemTable);
+    if (table) {
+      table.sets.forEach(set => addTable(set));
+    }
+  }
+  unit.droppedItemSets.forEach(set => addTable(set));
+  return drops;
+}
+
+const DropInfo = ({item}) => {
+  const [expanded, setExpanded] = React.useState(false);
+  const cache = React.useContext(AppCache.DataContext);
+  return (
+    <li>
+      <ObjectTooltip id={item.item && item.item.id}>
+        {item.item ? (
+          <a href={`/${cache.id}/${item.item.type}/${item.item.id}`} target="_blank">
+            <ObjectIcon object={item.item}/>
+            {item.chance.toFixed(0)}% - {item.item.name}
+          </a>
+        ) : (
+          <span>
+            <ObjectIcon object={{'icon': pathHash('ReplaceableTextures\\WorldEditUI\\Editor-Random-Item.blp')}}/>
+            {item.chance.toFixed(0)}% - {item.name}
+            {item.items != null && item.items.length > 0 && <span className="listToggle" onClick={() => setExpanded(!expanded)}>{expanded ? `(hide list)` : `(${item.items.length} items)`}</span>}
+          </span>
+        )}
+      </ObjectTooltip>
+      {item.items != null && expanded && (
+        <ul className="ItemDrop">
+          {item.items.map(item => (
+            <li>
+              <ObjectTooltip id={item.id}>
+                <a href={`/${cache.id}/${item.type}/${item.id}`} target="_blank">
+                  <ObjectIcon object={item}/> {item.name}
+                </a>
+              </ObjectTooltip>
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+};
+
 class SelectionWindow extends React.Component {
-  state = {x: 50, y: 50}
+  coords = {x: 50, y: 50}
+
+  static contextType = AppCache.DataContext;
+
+  unregisterEvents() {
+    document.removeEventListener('mousemove', this.onMouseMove, true);
+    document.removeEventListener('mouseup', this.onMouseUp, true);
+  }
+  componentWillUnmount() {
+    this.unregisterEvents();
+  }
+
+  onMouseDown = e => {
+    this.pressed = {x: e.clientX, y: e.clientY};
+    document.addEventListener('mousemove', this.onMouseMove, true);
+    document.addEventListener('mouseup', this.onMouseUp, true);
+  }
+  onMouseMove = e => {
+    const dx = e.clientX - this.pressed.x, dy = e.clientY - this.pressed.y;
+    this.coords.x += dx;
+    this.coords.y += dy;
+    if (this.element) {
+      this.element.style.left = this.coords.x + 'px';
+      this.element.style.top = this.coords.y + 'px';
+    }
+    this.pressed = {x: e.clientX, y: e.clientY};
+  }
+  onMouseUp = () => {
+    delete this.pressed;
+    this.unregisterEvents();
+  }
+
   render() {
     const { gameData, units, viewer, deselect } = this.props;
-    const style = {left: this.state.x, top: this.state.y};
+    const cache = this.context;
+    const style = {left: this.coords.x, top: this.coords.y};
     if (!units.length) {
       style.display = "none";
     }
     const misc = gameData.getSection('Misc');
-    const xpA = parseInt(misc.get('grantnormalxpformulaa'));
-    const xpB = parseInt(misc.get('grantnormalxpformulaa'));
-    const xpC = parseInt(misc.get('grantnormalxpformulaa'));
+    const makeXpFunction = (xpTable, xpA, xpB, xpC) => {
+      return function xpFunction(level) {
+        if (level <= 0) {
+          return 0;
+        } if (level <= xpTable.length) {
+          return xpTable[level - 1];
+        } else {
+          return xpA * xpFunction(level - 1) + xpB * level + xpC;
+        }
+      };
+    };
+    const xpFunction = makeXpFunction(
+      misc.get('grantnormalxp').split(',').map(x => parseInt(x)),
+      parseInt(misc.get('grantnormalxpformulaa')),
+      parseInt(misc.get('grantnormalxpformulab')),
+      parseInt(misc.get('grantnormalxpformulac'))
+    );
+    let totalXp = 0;
+    const body = (
+      <ul className="Body">
+        {units.map(({unit}) => {
+          const data = viewer.unitsData.find(row => row.id === unit.id);
+          if (!data) {
+            return null;
+          }
+          let dropDiv = null;
+          const drops = computeDrops(unit, viewer);
+          if (drops) {
+            const makeDrop = table => (
+              <ul className="ItemDrop">
+                {table.map(item => <DropInfo item={item}/>)}
+              </ul>
+            );
+            if (drops.length > 1) {
+              dropDiv = (
+                <ul className="ItemDrops">
+                  {drops.map((table, idx) => (
+                    <li>
+                      <span>Dropped Item Set {idx + 1} (Total Chance: {table.reduce((sum, {chance}) => sum + chance, 0).toFixed(0)}%)</span>
+                      {makeDrop(table)}
+                    </li>
+                  ))}
+                </ul>
+              );
+            } else if (drops.length) {
+              dropDiv = makeDrop(drops[0]);
+            }
+          }
+          let levelDiv = null;
+          const level = parseInt(data.data.level);
+          if (!isNaN(level)) {
+            const xp = xpFunction(level);
+            totalXp += xp;
+            levelDiv = <span>&nbsp;({xp} XP)</span>;
+          }
+          return (
+            <li>
+              <ObjectTooltip id={unit.id}>
+                <a href={`/${cache.id}/${data.type}/${data.id}`} target="_blank">
+                  <ObjectIcon object={data}/><span className="name">{data.name}</span> {levelDiv}
+                </a>
+              </ObjectTooltip>
+              {dropDiv}
+            </li>
+          );
+        })}
+      </ul>
+    );
     return (
-      <div className="Selection" style={style}>
-        <div className="Heading">Selection</div>
-        Selected units: {units.length}
+      <div className="Selection" style={style} ref={n => this.element = n}>
+        <div className="Heading" onMouseDown={this.onMouseDown}>Selection{totalXp > 0 ? ` (${totalXp} Total XP)` : ''}</div>
+        {body}
       </div>
     );
   }
@@ -122,10 +347,10 @@ export default class MapHome extends React.Component {
   }
   onMouseUp = e => {
     if (this.dragPos && this.viewer) {
-      if (this.dragButton === 0 && Math.abs(this.dragPos.x - this.dragStart.x) < 5 && Math.abs(this.dragPos.y - this.dragStart.y) < 5) {
+      if (this.dragButton < 2 && Math.abs(this.dragPos.x - this.dragStart.x) < 5 && Math.abs(this.dragPos.y - this.dragStart.y) < 5) {
         let rc = this.canvas.getBoundingClientRect();
-        let unit = this.viewer.selectUnit(e.clientX - rc.left, e.clientY - rc.top);
-        this.setState({selection: unit ? [unit] : []});
+        let units = this.viewer.selectUnit(e.clientX - rc.left, e.clientY - rc.top, this.dragButton);
+        this.setState({selection: units});
       }
       delete this.dragPos;
     }
@@ -154,6 +379,8 @@ export default class MapHome extends React.Component {
 
   
   animate = ts => {
+    console.log(ts - this.prevTs);
+    this.prevTs = ts;
     this.frame = requestAnimationFrame(this.animate);
     this.scene.camera.viewport([0, 0, this.canvas.width, this.canvas.height]);
 

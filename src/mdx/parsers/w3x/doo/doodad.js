@@ -37,7 +37,7 @@ export default class Doodad {
    * @param {number} version
    */
   load(stream, version) {
-    this.id = stream.read(4);
+    this.id = stream.read(4, true);
     this.variation = stream.readInt32();
     this.location = stream.readFloat32Array(3);
     this.angle = stream.readFloat32();

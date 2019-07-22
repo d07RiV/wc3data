@@ -95,7 +95,7 @@ class MapData {
     if (!text) {
       const version = Math.max(...Object.keys(this.cache.versions));
       const data = this.cache.data(version);
-      return data ? data.then(v => v.objects()) : Promise.resolve(null);
+      return this.objects_ = (data ? data.then(v => v.objects()) : Promise.resolve(null));
     }
     return this.objects_ = Promise.resolve(text ? postProcess(JSON.parse(text)) : null);
   }

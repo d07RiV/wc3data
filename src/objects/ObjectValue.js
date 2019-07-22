@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { BuildCtx, ObjectIcon, TileSets, DestructableCategory, DoodadCategory, TechList } from './ObjectCtx';
 import { Popover, OverlayTrigger } from 'react-bootstrap';
+import ObjectTooltip from './Tooltip';
 import classNames from 'classnames';
 import AppCache from 'data/cache';
 import tagString from 'data/tagString';
@@ -9,13 +10,13 @@ import ObjectModel from './ObjectModel';
 
 const ObjectLink = ({object}) => (
   <BuildCtx.Consumer>
-    {build => <Link to={`/${build}/${object.type}/${object.id}`}><ObjectIcon object={object}/>{object.name}</Link>}
+    {build => <ObjectTooltip id={object.id}><Link to={`/${build}/${object.type}/${object.id}`}><ObjectIcon object={object}/>{object.name}</Link></ObjectTooltip>}
   </BuildCtx.Consumer>
 );
 
 const ObjectLinkRaw = ({object}) => (
   <BuildCtx.Consumer>
-    {build => <Link to={`/${build}/${object.type}/${object.id}`}>{object.id}</Link>}
+    {build => <ObjectTooltip id={object.id}><Link to={`/${build}/${object.type}/${object.id}`}>{object.id}</Link></ObjectTooltip>}
   </BuildCtx.Consumer>
 );
 

@@ -16,7 +16,7 @@ export default class RandomUnit {
    * @param {BinaryStream} stream
    */
   load(stream) {
-    this.id = stream.read(4);
+    this.id = stream.read(4, true);
     this.chance = stream.readInt32();
   }
 

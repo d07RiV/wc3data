@@ -21,7 +21,7 @@ export default class UpgradeAvailabilityChange {
    */
   load(stream) {
     this.playerFlags = stream.readUint32();
-    this.id = stream.read(4);
+    this.id = stream.read(4, true);
     this.levelAffected = stream.readInt32();
     this.availability = stream.readInt32();
   }
